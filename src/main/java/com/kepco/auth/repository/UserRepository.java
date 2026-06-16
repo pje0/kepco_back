@@ -7,6 +7,7 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    // 로그인을 위해 사용자 아이디(username)로 정보를 조회하는 메서드
-    Optional<User> findByUsername(String username);
+    
+    // ⭕ 기존 findByUsername을 지우고, 변경된 컬럼명인 loginId에 맞추어 쿼리 메서드 교정 완료!
+    Optional<User> findByLoginId(String loginId);
 }

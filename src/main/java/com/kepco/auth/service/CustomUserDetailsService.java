@@ -1,17 +1,18 @@
 package com.kepco.auth.service;
 
-import com.kepco.auth.entity.User;
-import com.kepco.auth.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Collections;
 
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
+import com.kepco.auth.entity.User;
+import com.kepco.auth.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -22,21 +23,17 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        log.info("@# CustomUserDetailsService - loadUserByUsername() 실행: {}", username);
+        log.info("@# CustomUserDetailsService - 로그인 검증 조회 시작: {}", username);
 
-        // 1. DB에서 사용자 아이디로 조회 (없으면 시큐리티 예외 발생)
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> {
-                    log.error("@# 사용자 찾을 수 없음: {}", username);
-                    return new UsernameNotFoundException("존재하지 않는 사용자입니다: " + username);
-                });
+        // ⭕ 기존 findByUsername 대신 변경된 findByLoginId 호출
+        User user = userRepository.findByLoginId(username)
+                .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 사용자입니다: " + username));
 
-        // 2. 스프링 시큐리티 전용 UserDetails 객체로 변환하여 리턴
-        // 사용자의 실제 비밀번호(암호화된 상태)와 권한(ROLE_USER 등)을 시큐리티에게 넘겨줍니다.
+        // ⭕ 스키마 규칙(접두사 없음)을 시큐리티 표준(ROLE_접두사 필수)에 맞게 "ROLE_" + user.getRole()로 조립하여 전달
         return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
+                user.getLoginId(),
                 user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority(user.getRole()))
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole()))
         );
     }
 }

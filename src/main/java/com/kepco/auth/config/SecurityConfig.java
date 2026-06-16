@@ -6,8 +6,6 @@ import com.kepco.auth.provider.JwtTokenProvider;
 import com.kepco.auth.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-// ⭕ reactive 제거된 올바른 MVC용 PathRequest 경로
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,91 +34,70 @@ public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
 
-    // 1. 시큐리티 인증 매니저 빈 등록
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration configuration) throws Exception {
-        log.info("@# SecurityConfig - authenticationManager() 등록");
         return configuration.getAuthenticationManager();
     }
 
-    // 2. 메인 시큐리티 필터 체인 제어 및 필터 조립
     @Bean
-    public SecurityFilterChain filterChain(
-            HttpSecurity http,
-            AuthenticationManager authenticationManager) throws Exception {
-        log.info("@# SecurityConfig - filterChain() 조립 시작");
-
-        // 로그인 인증 필터 생성
-        JwtAuthenticationFilter jwtAuthenticationFilter =
-                new JwtAuthenticationFilter(authenticationManager, jwtTokenProvider);
+    public SecurityFilterChain filterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
+        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(authenticationManager, jwtTokenProvider);
 
         http
-                // 기본 세션 보안 기능 비활성화 (JWT 정책)
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-
-                // 리액트 연동을 위한 CORS 정책 허용
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-                // 세션 Stateless 모드 설정
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // 유저 검증 서비스 바인딩
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .userDetailsService(customUserDetailsService)
-
-                // 접근 제어 권한 인가 설정
+                
+                // 🔐 최종 DB 스키마 규격 반영 및 이원화 인가 제어
                 .authorizeHttpRequests(auth -> auth
-                        // 메인화면, 로그인, 회원가입 관련 주소 전면 허용
-                        .requestMatchers("/", "/login", "/api/auth/**").permitAll()
-                        // 정적 리소스 통과
+                        // 1. 로그인 및 민원인 가입 창구(/register) 전면 허용
+                        .requestMatchers("/", "/login", "/register").permitAll()
                         .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
-                        // 관리자 기능 통제
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        // 그 외 모든 요청은 JWT 토큰 필수
+                        
+                        // 2. 민원인 본인 정보 수정/탈퇴 전용 마이페이지 (임직원 변조 차단)
+                        .requestMatchers("/user/me").hasRole("CITIZEN")
+                        
+                        // 3. 민원인 전용 비즈니스 처리 영역
+                        .requestMatchers("/citizen/**").hasAnyRole("CITIZEN", "ADMIN")
+                        
+                        // 4. [인사팀 전용 사원 관리 경로] /admin 경로와 직무 완전 격리 분리 완료
+                        .requestMatchers("/hr/**").hasAnyRole("HR", "ADMIN")
+                        
+                        // 5. ⭕ [파견관리팀 전용 관제 경로] 스키마 공식 명칭 DISPATCHER 교정 완료 (403 방어)
+                        .requestMatchers("/dispatch/**").hasAnyRole("DISPATCHER", "ADMIN")
+                        
+                        // 6. [현장근무자 전용 복구 경로] 순수 WORKER만 단독 접근 허용 (관리자 진입 불가)
+                        .requestMatchers("/worker/**").hasRole("WORKER")
+                        
+                        // 7. 최고 관리자 전용 서버 마스터 시스템 통제 경로
+                        .requestMatchers("/admin/system/**").hasRole("ADMIN")
+                        
                         .anyRequest().authenticated()
                 )
-
-                // [필터 조립 1] 로그인 요청 시 동작할 인증 필터 배치
-                .addFilterAt(
-                        jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                )
-
-                // [필터 조립 2] 오타 전면 수정된 토큰 검증 인가 필터 정상 배치
-                .addFilterBefore(
-                        new JwtRequestFilter(jwtTokenProvider),
-                        UsernamePasswordAuthenticationFilter.class
-                );
+                .addFilterAt(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtRequestFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // 3. 비밀번호 암호화 빈 등록
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // 4. 리액트 연동용 CORS 설정
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:5173"
-        ));
-        
+        config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
-
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-        
         return source;
     }
 }

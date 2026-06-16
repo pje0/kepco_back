@@ -36,8 +36,17 @@ public class JwtTokenProvider {
     }
 
     public String createToken(Authentication authentication) {
+        // 💡 [핵심 교정]: 시큐리티 인증 객체 내부 권한 문자열을 추출할 때, 
+        // 이미 ROLE_ROLE_ 구조로 오염되어 있다면 깨끗하게 걷어내어 오직 단 한 번만 감싸진 온전한 규격("ROLE_HR")으로 토큰에 각인합니다.
         String authorities = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
+                .map(role -> {
+                    String cleanRole = role.trim();
+                    if (cleanRole.startsWith("ROLE_ROLE_")) {
+                        cleanRole = cleanRole.substring(5); // "ROLE_ROLE_HR" -> "ROLE_HR"로 강제 보정
+                    }
+                    return cleanRole;
+                })
                 .collect(Collectors.joining(","));
 
         Date now = new Date();
@@ -62,7 +71,14 @@ public class JwtTokenProvider {
         Collection<? extends GrantedAuthority> authorities =
                 Arrays.stream(claims.get("auth").toString().split(","))
                         .filter(auth -> !auth.trim().isEmpty())
-                        .map(SimpleGrantedAuthority::new)
+                        .map(auth -> {
+                            String role = auth.trim();
+                            // 💡 핵심 교정: 이미 토큰에 ROLE_이 붙어와서 시큐리티가 ROLE_ROLE_HR로 중복 인식하는 현상을 방지합니다.
+                            if (role.startsWith("ROLE_")) {
+                                role = role.substring(5); // "ROLE_" 5글자를 잘라내어 "HR" 순수 단어만 시큐리티에 넘겨줍니다.
+                            }
+                            return new SimpleGrantedAuthority("ROLE_" + role); // 시큐리티 규격에 맞춰 단 한 번만 온전하게 빌드
+                        })
                         .collect(Collectors.toList());
 
         UserDetails principal = new User(claims.getSubject(), "", authorities);

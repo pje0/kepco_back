@@ -33,6 +33,9 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             // 토큰 내부의 유저 정보와 권한을 꺼내 시큐리티 인증 객체로 만듦
             Authentication authentication = jwtTokenProvider.getAuthentication(token);
             
+            // 🎯 [여기 삽입!] 현재 시큐리티 메모리에 최종적으로 어떤 권한 문자열이 들어가는지 눈으로 확인하는 로그
+            log.info("🚨 [인가 진단 콘솔] 현재 로그인 유저의 시큐리티 권한 목록: {}", authentication.getAuthorities());
+            
             // 시큐리티 세션(Context)에 인증 성공 상태를 박아둠 (이 요청이 끝날 때까지만 유지)
             SecurityContextHolder.getContext().setAuthentication(authentication);
             

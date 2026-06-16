@@ -39,7 +39,7 @@ public class AuthService {
                 .name(registerRequest.getName())
                 .email(registerRequest.getEmail())
                 .phone(registerRequest.getPhone())
-                .role("CITIZEN")
+                .role("ROLE_CITIZEN")
                 .build();
 
         userRepository.save(user);
@@ -91,19 +91,22 @@ public class AuthService {
             throw new IllegalArgumentException("이미 존재하는 사원 아이디입니다.");
         }
 
+        // 💡 [교정]: 인사팀이 던진 순수 단어에 'ROLE_'를 강제 결합하여 DB 무결성 확보
+        String formattedRole = "ROLE_" + employeeDto.getRole().toUpperCase();
+
         User user = User.builder()
                 .loginId(employeeDto.getLoginId())
                 .password(passwordEncoder.encode(employeeDto.getPassword()))
                 .name(employeeDto.getName())
                 .email(employeeDto.getEmail())
                 .phone(employeeDto.getPhone())
-                .role(employeeDto.getRole().toUpperCase())
+                .role(formattedRole) // ⬅️ 보정된 'ROLE_XXXX' 주입
                 .build();
 
         userRepository.save(user);
 
-        // 최초 가입 시 권한이 'WORKER'(현장직)일 경우에만 2번 recovery_worker 테이블에 연쇄 데이터 세팅
-        if ("WORKER".equalsIgnoreCase(user.getRole())) {
+        // 💡 [교정]: 데이터가 'ROLE_WORKER'로 들어가므로 비교문도 완벽하게 싱크 조율
+        if ("ROLE_WORKER".equalsIgnoreCase(user.getRole())) {
             user.createRecoveryWorkerProfile(
                     employeeDto.getEmpNumber(),
                     employeeDto.getDepartment(),
@@ -129,8 +132,8 @@ public class AuthService {
         if (updateRequest.getEmail() != null) user.changeEmail(updateRequest.getEmail());
         if (updateRequest.getPhone() != null) user.changePhone(updateRequest.getPhone());
 
-        // 2번 테이블 OpenAI용 자격증 및 직급 스펙 실시간 변경 연동
-        if ("WORKER".equalsIgnoreCase(user.getRole()) && user.getRecoveryWorker() != null) {
+        // 💡 [교정]: 2번 테이블 스펙 변경 트리거 조건도 'ROLE_WORKER'로 싱크 완료
+        if ("ROLE_WORKER".equalsIgnoreCase(user.getRole()) && user.getRecoveryWorker() != null) {
             user.getRecoveryWorker().updateWorkerSpecs(
                     updateRequest.getDepartment(),
                     updateRequest.getAssignedDistrict(),
@@ -143,10 +146,6 @@ public class AuthService {
 
     /**
      * 6. [인사팀 전용] 사원 직무 권한(Role) 변경 처리 
-     * 💡 [최종 조율 명세 반영 완료]
-     *   - 타팀 -> WORKER 최초 발령 시: 2번 recovery_worker 프로필 신규 생성 (INSERT)
-     *   - WORKER -> 타팀 내근 발령 시: 데이터 삭제 없이 work_status = 'UNAVAILABLE' 잠금 (UPDATE)
-     *   - 내근 -> WORKER 현장 복귀 시: 프로필 재활용하여 work_status = 'AVAILABLE' 원복 (UPDATE)
      */
     @Transactional
     public void updateUserRole(Long id, AdminUserUpdateRequestDto roleRequest) {
@@ -157,13 +156,15 @@ public class AuthService {
 
         if (roleRequest.getRole() != null) {
             String oldRole = user.getRole(); 
-            String newRole = roleRequest.getRole().toUpperCase(); 
+            // 💡 [교정]: 변경 요청 들어온 보직에도 'ROLE_'를 강제로 붙여서 연산
+            String newRole = "ROLE_" + roleRequest.getRole().toUpperCase(); 
             
             // 1. 1번 테이블 권한 변경
             user.changeRole(newRole);
 
+            // 💡 [교정]: 분기 규칙 검사 시에도 전부 'ROLE_WORKER' 기준으로 철저하게 방어
             // [분기 A] 타팀 -> 현장직(WORKER) 최초 보직 이동 시 (신규 생성)
-            if ("WORKER".equals(newRole) && user.getRecoveryWorker() == null) {
+            if ("ROLE_WORKER".equals(newRole) && user.getRecoveryWorker() == null) {
                 user.createRecoveryWorkerProfile(
                         "EMP-" + user.getId() + "-" + System.currentTimeMillis() % 10000,
                         "미배정 부서", "대기 지역", "자격증 정보를 등록해 주세요", "JUNIOR"
@@ -172,13 +173,13 @@ public class AuthService {
             }
             
             // [분기 B] 기존 현장직(WORKER) -> 내근직(HR, DISPATCHER 등)으로 복귀 시 (출동 불가 잠금)
-            else if (!"WORKER".equals(newRole) && "WORKER".equals(oldRole) && user.getRecoveryWorker() != null) {
+            else if (!"ROLE_WORKER".equals(newRole) && "ROLE_WORKER".equals(oldRole) && user.getRecoveryWorker() != null) {
                 user.getRecoveryWorker().changeWorkStatus("UNAVAILABLE"); 
                 log.info("@# 🔐 [인사 발령] 내근직 전환 감지: recovery_worker 데이터를 보존하고 '출동 불가(UNAVAILABLE)' 상태로 잠금 완료.");
             }
             
             // [분기 C] 예전에 WORKER였다가 내근직에 있던 사람이 다시 WORKER로 복귀 시 (잠금 해제 / 대기 상태 원복)
-            else if ("WORKER".equals(newRole) && user.getRecoveryWorker() != null) {
+            else if ("ROLE_WORKER".equals(newRole) && user.getRecoveryWorker() != null) {
                 user.getRecoveryWorker().changeWorkStatus("AVAILABLE"); 
                 log.info("@# 🔓 [인사 발령] 현장직 재복귀 감지: 기존 이력 프로필을 재활용하여 '출동 가능(AVAILABLE)' 상태로 원복 완료.");
             }

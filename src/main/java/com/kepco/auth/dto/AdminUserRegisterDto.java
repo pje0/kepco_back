@@ -13,7 +13,7 @@ public class AdminUserRegisterDto {
     // =========================================================================
     @NotBlank(message = "사원 아이디는 필수 입력 항목입니다.")
     @Size(min = 4, max = 50, message = "사원 아이디는 4자 이상 50자 이하로 입력해 주세요.")
-    private String loginId;          // ⭕ DB: login_id
+    private String username;          // ⭕ DB: username
 
     @NotBlank(message = "초기 임시 비밀번호는 필수 입력 항목입니다.")
     @Size(min = 6, max = 100, message = "초기 비밀번호는 6자 이상 입력해 주세요.")

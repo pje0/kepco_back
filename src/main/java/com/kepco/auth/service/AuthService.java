@@ -30,14 +30,14 @@ public class AuthService {
      */
     @Transactional
     public void register(RegisterRequestDto registerRequest) {
-        log.info("@# AuthService - 민원인 회원가입 진행 중: {}", registerRequest.getLoginId());
+        log.info("@# AuthService - 민원인 회원가입 진행 중: {}", registerRequest.getUsername());
 
-        if (userRepository.findByLoginId(registerRequest.getLoginId()).isPresent()) {
+        if (userRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
             throw new IllegalArgumentException("이미 존재하는 아이디입니다.");
         }
 
         User user = User.builder()
-                .loginId(registerRequest.getLoginId())
+                .username(registerRequest.getUsername())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
                 .name(registerRequest.getName())
                 .email(registerRequest.getEmail())
@@ -46,15 +46,15 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
-        log.info("@# 민원인 가입 DB 저장 완료: {}", user.getLoginId());
+        log.info("@# 민원인 가입 DB 저장 완료: {}", user.getUsername());
     }
 
     /**
      * [대민 전용] 2. 민원인 본인 정보 수정 (비번, 전번, 메일)
      */
     @Transactional
-    public void updateUserInfo(String loginId, UserUpdateRequestDto updateRequest) {
-        User user = userRepository.findByLoginId(loginId)
+    public void updateUserInfo(String username, UserUpdateRequestDto updateRequest) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
         if (updateRequest.getPassword() != null && !updateRequest.getPassword().isEmpty()) {
@@ -72,8 +72,8 @@ public class AuthService {
      * [대민 전용] 3. 민원인 본인 회원 탈퇴
      */
     @Transactional
-    public void deleteUser(String loginId) {
-        User user = userRepository.findByLoginId(loginId)
+    public void deleteUser(String username) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
         userRepository.delete(user);
     }
@@ -88,9 +88,9 @@ public class AuthService {
      */
     @Transactional
     public void createEmployee(AdminUserRegisterDto employeeDto) {
-        log.info("@# AuthService - 인사팀에 의한 사원 등록 진행 중: {}", employeeDto.getLoginId());
+        log.info("@# AuthService - 인사팀에 의한 사원 등록 진행 중: {}", employeeDto.getUsername());
 
-        if (userRepository.findByLoginId(employeeDto.getLoginId()).isPresent()) {
+        if (userRepository.findByUsername(employeeDto.getUsername()).isPresent()) {
             throw new IllegalArgumentException("이미 존재하는 사원 아이디입니다.");
         }
 
@@ -98,13 +98,15 @@ public class AuthService {
         String formattedRole = "ROLE_" + employeeDto.getRole().toUpperCase();
 
         User user = User.builder()
-                .loginId(employeeDto.getLoginId())
+                .username(employeeDto.getUsername())
                 .password(passwordEncoder.encode(employeeDto.getPassword()))
                 .name(employeeDto.getName())
                 .email(employeeDto.getEmail())
                 .phone(employeeDto.getPhone())
-                .role(formattedRole) // ⬅️ 보정된 'ROLE_XXXX' 주입
+                .role(formattedRole)
                 .build();
+        
+        user.setHiredAt(java.time.LocalDate.now()); 
 
         userRepository.save(user);
 

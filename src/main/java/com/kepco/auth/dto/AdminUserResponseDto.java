@@ -14,7 +14,7 @@ public class AdminUserResponseDto {
     // [1번 users 테이블 영역 - 모든 임직원 공통 기본 데이터]
     // =========================================================================
     private Long id;
-    private String loginId;
+    private String username;
     private String name;
     private String email;
     private String phone;
@@ -37,7 +37,7 @@ public class AdminUserResponseDto {
      */
     public AdminUserResponseDto(User user) {
         this.id = user.getId();
-        this.loginId = user.getLoginId();
+        this.username = user.getUsername();
         this.name = user.getName();
         this.email = user.getEmail();
         this.phone = user.getPhone();

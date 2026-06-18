@@ -25,13 +25,13 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         log.info("@# CustomUserDetailsService - 로그인 검증 조회 시작: {}", username);
 
-        // ⭕ 기존 findByUsername 대신 변경된 findByLoginId 호출
-        User user = userRepository.findByLoginId(username)
+        // ⭕ 기존 findByLoginId 대신 변경된 findByUsername 호출
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 사용자입니다: " + username));
 
         // ⭕ 스키마 규칙(접두사 없음)을 시큐리티 표준(ROLE_접두사 필수)에 맞게 "ROLE_" + user.getRole()로 조립하여 전달
         return new org.springframework.security.core.userdetails.User(
-                user.getLoginId(),
+                user.getUsername(),
                 user.getPassword(),
                 Collections.singletonList(new SimpleGrantedAuthority(user.getRole()))
         );

@@ -11,8 +11,8 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     
-    // ⭕ 기존 로그인 ID 단건 조회
-    Optional<User> findByLoginId(String loginId);
+    // ⭕ 기존 로그인 ID 단건 조회 -> username 단건 조회로 변경
+    Optional<User> findByUsername(String username);
 
     /**
      * 💡 [MIS 중심의 임직원 전체 목록 조회]

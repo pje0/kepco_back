@@ -33,8 +33,8 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "login_id", unique = true, nullable = false, length = 100)
-    private String loginId; // ⭕ DB 컬럼: login_id
+    @Column(name = "username", unique = true, nullable = false, length = 100)
+    private String username; // ⭕ DB 컬럼: username
 
     @Column(nullable = false, length = 255)
     private String password;
@@ -65,8 +65,8 @@ public class User {
     private RecoveryWorker recoveryWorker; // 💡 자식 객체 바인딩 (주의: 다음 스텝에서 생성 예정)
 
     @Builder
-    public User(String loginId, String password, String name, String email, String phone, String role, LocalDate hiredAt) {
-        this.loginId = loginId;
+    public User(String username, String password, String name, String email, String phone, String role, LocalDate hiredAt) {
+        this.username = username;
         this.password = password;
         this.name = name;
         this.email = email;

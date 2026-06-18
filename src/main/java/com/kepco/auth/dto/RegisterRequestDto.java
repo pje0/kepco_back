@@ -5,12 +5,13 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+
 @Data
 public class RegisterRequestDto {
 
     @NotBlank(message = "아이디는 필수 입력 항목입니다.")
     @Size(min = 4, max = 50, message = "아이디는 4자 이상 50자 이하로 입력해 주세요.")
-    private String loginId; // ⭕ DB: login_id 매칭
+    private String username; // ⭕ DB: username 매칭
 
     @NotBlank(message = "비밀번호는 필수 입력 항목입니다.")
     @Size(min = 6, max = 100, message = "비밀번호는 6자 이상 입력해 주세요.")
@@ -23,4 +24,5 @@ public class RegisterRequestDto {
     private String email; // ⭕ DB: email 매칭 (추가 완료)
 
     private String phone; // ⭕ DB: phone 매칭 (NULL 허용)
+
 }

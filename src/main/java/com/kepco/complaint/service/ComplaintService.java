@@ -1,18 +1,22 @@
 package com.kepco.complaint.service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.kepco.complaint.dto.AiAnalysisResult;
 import com.kepco.complaint.dto.ComplaintRequestDto;
 import com.kepco.complaint.dto.RecommendedWorkerResponseDto;
 import com.kepco.complaint.entity.Complaint;
 import com.kepco.complaint.repository.ComplaintRepository;
+
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.util.*;
 
 @Service
 @RequiredArgsConstructor

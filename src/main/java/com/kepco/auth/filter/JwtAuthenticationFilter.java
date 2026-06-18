@@ -26,8 +26,8 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
         
-        // 중요: 기본 로그인 요청 URL을 /login으로 명시적 설정
-        setFilterProcessesUrl("/login"); 
+        // 💡 중요: 리액트가 프록시를 통해 요청하는 실제 API 엔드포인트 주소인 /api/auth/login 으로 명시적 변경합니다!
+        setFilterProcessesUrl("/api/auth/login"); 
     }
 
     // 1. 리액트에서 보낸 로그인 요청(JSON 형태)을 가로채서 인증 시도
@@ -85,4 +85,5 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write("{\"message\": \"아이디 또는 비밀번호가 올바르지 않습니다.\"}");
     }
+    
 }

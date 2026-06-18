@@ -1,11 +1,14 @@
 package com.kepco.auth.controller;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kepco.auth.dto.AdminUserRegisterDto;       // 💡 사원 가입용 DTO 임포트
 import com.kepco.auth.dto.AdminUserUpdateRequestDto; // 💡 사원 수정용 DTO 임포트
+import com.kepco.auth.dto.AdminUserResponseDto;      // 💡 [추가] 사원 목록 응답용 DTO 임포트
 import com.kepco.auth.dto.RegisterRequestDto;
 import com.kepco.auth.dto.UserUpdateRequestDto;
 import com.kepco.auth.service.AuthService;
@@ -33,10 +37,10 @@ public class AuthController {
 
     /**
      * 1-1. 민원인 회원가입 API
-     * - URL: POST /register
+     * - URL: POST /api/auth/register
      * - 규칙: 누구나 접근 가능, 서비스 단에서 무조건 CITIZEN 권한 부여
      */
-    @PostMapping("/register")
+    @PostMapping("/api/auth/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequestDto registerRequest) {
         try {
             authService.register(registerRequest);
@@ -48,9 +52,9 @@ public class AuthController {
 
     /**
      * 1-2. 민원인 본인 정보 수정 API (보안 표준 - 대안 A)
-     * - URL: PUT /user/me
+     * - URL: PUT /api/user/me
      */
-    @PutMapping("/user/me")
+    @PutMapping("/api/user/me")
     public ResponseEntity<?> update(@RequestBody UserUpdateRequestDto updateRequest,
                                     @AuthenticationPrincipal User principal) {
         try {
@@ -63,9 +67,9 @@ public class AuthController {
 
     /**
      * 1-3. 민원인 회원 탈퇴 API (보안 표준 - 대안 A)
-     * - URL: DELETE /user/me
+     * - URL: DELETE /api/user/me
      */
-    @DeleteMapping("/user/me")
+    @DeleteMapping("/api/user/me")
     public ResponseEntity<?> withdraw(@AuthenticationPrincipal User principal) {
         try {
             authService.deleteUser(principal.getUsername());
@@ -81,10 +85,10 @@ public class AuthController {
 
     /**
      * 2-1. 신입 사원 계정 생성 API (인사팀 대행 등록 방식)
-     * - URL: POST /hr/user
+     * - URL: POST /api/hr/user
      * - 규칙: 사원의 기본 계정 정보와 OpenAI 분석용 직무 데이터를 처음부터 일괄 생성
      */
-    @PostMapping("/hr/user")
+    @PostMapping("/api/hr/user")
     public ResponseEntity<?> createEmployee(@Valid @RequestBody AdminUserRegisterDto employeeDto) {
         try {
             authService.createEmployee(employeeDto);
@@ -96,9 +100,9 @@ public class AuthController {
 
     /**
      * 2-2. 사원 기본 신상 및 OpenAI 분석 스펙(자격증 등) 수정 API
-     * - URL: PUT /hr/user/{id}
+     * - URL: PUT /api/hr/user/{id}
      */
-    @PutMapping("/hr/user/{id}")
+    @PutMapping("/api/hr/user/{id}")
     public ResponseEntity<?> updateEmployeeInfo(@PathVariable("id") Long id,
                                                 @RequestBody AdminUserUpdateRequestDto updateRequest) {
         try {
@@ -111,11 +115,11 @@ public class AuthController {
 
     /**
      * 2-3. 사원 직무 권한(부서 및 Role) 변경 API
-     * - URL: PUT /hr/user/{id}/role
+     * - URL: PUT /api/hr/user/{id}/role
      */
-    @PutMapping("/hr/user/{id}/role")
+    @PutMapping("/api/hr/user/{id}/role")
     public ResponseEntity<?> changeUserRole(@PathVariable("id") Long id,
-                                            @RequestBody AdminUserUpdateRequestDto roleRequest) { // ⭕ 통합 DTO로 매핑 변경
+                                            @RequestBody AdminUserUpdateRequestDto roleRequest) {
         try {
             authService.updateUserRole(id, roleRequest);
             return ResponseEntity.ok(Map.of("message", "사원의 직무 권한이 성공적으로 변경되었습니다."));
@@ -124,16 +128,69 @@ public class AuthController {
         }
     }
 
-
     /**
      * 2-4. 사원 퇴사 처리 API (삭제)
-     * - URL: DELETE /hr/user/{id}
+     * - URL: DELETE /api/hr/user/{id}
      */
-    @DeleteMapping("/hr/user/{id}")
+    @DeleteMapping("/api/hr/user/{id}")
     public ResponseEntity<?> fireEmployee(@PathVariable("id") Long id) {
         try {
             authService.deleteEmployeeByAdmin(id);
             return ResponseEntity.ok(Map.of("message", "해당 사원의 퇴사 처리가 완료되어 계정이 삭제되었습니다."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /**
+     * 2-5. [신규 추가] 임직원 명부 전체 조회 API
+     * - URL 규격: GET /api/hr/users
+     * - 규칙: SecurityConfig의 /api/hr/** 정책에 연동되어 자동으로 HR, ADMIN만 접근 허용
+     */
+    @GetMapping("/api/hr/users")
+    public ResponseEntity<?> getAllEmployeesList() {
+        try {
+            // 1. 서비스 비즈니스 엔진 호출하여 100% 무결성 DTO 리스트 수신
+            List<AdminUserResponseDto> employees = authService.getAllEmployees();
+            
+            // 2. 리액트 레이어가 즉각 렌더링하도록 200 OK와 함께 JSON 배열 송출
+            return ResponseEntity.ok(employees);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "임직원 명부를 불러오는 중 오류가 발생했습니다. " + e.getMessage()));
+        }
+    }
+
+    /* =========================================================================
+     *  3. 로그인 회원 공통 인증 기능 (내 정보 조회)
+     * ========================================================================= */
+
+    /**
+     * 3-1. 현재 로그인한 사용자의 최신 상세 정보 조회 API
+     * - URL: GET /api/auth/me
+     * - 프론트엔드에서 새로고침 하거나 로그인 직후 세션 유지를 위해 토큰을 검증하고 데이터를 가져오는 핵심 창구입니다.
+     */
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    @GetMapping("/api/auth/me")
+    public ResponseEntity<?> getCurrentUserInfo(@AuthenticationPrincipal User principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "인증 정보가 만료되었거나 올바르지 않습니다."));
+        }
+        
+        try {
+            String loginId = principal.getUsername();
+            
+            String role = principal.getAuthorities().stream()
+                    .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                    .findFirst()
+                    .orElse("ROLE_CITIZEN");
+
+            Map<String, Object> userData = Map.of(
+                "username", loginId,
+                "role", role,
+                "name", loginId.equals("admin") ? "최관리" : "한전직원"
+            );
+
+            return ResponseEntity.ok(userData);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

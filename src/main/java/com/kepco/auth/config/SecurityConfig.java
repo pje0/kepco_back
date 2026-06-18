@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -27,6 +28,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 @Slf4j
 public class SecurityConfig {
@@ -52,29 +54,32 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .userDetailsService(customUserDetailsService)
                 
-                // 🔐 최종 DB 스키마 규격 반영 및 이원화 인가 제어
+             // 🔐 최종 DB 스키마 규격 반영 및 이원화 인가 제어 (프론트엔드 /api/ 주소 완벽 튜닝)
                 .authorizeHttpRequests(auth -> auth
-                        // 1. 로그인 및 민원인 가입 창구(/register) 전면 허용
-                        .requestMatchers("/", "/login", "/register").permitAll()
+                        // 1. 로그인, 로그아웃 및 민원인 가입 창구 전면 허용 (개나소나 프리패스 구역)
+                        .requestMatchers(
+                            "/", "/login", "/register", 
+                            "/api/auth/login", "/api/auth/logout", "/api/auth/register", "/api/register"
+                        ).permitAll()
                         .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                         
-                        // 2. 민원인 본인 정보 수정/탈퇴 전용 마이페이지 (임직원 변조 차단)
-                        .requestMatchers("/user/me").hasRole("CITIZEN")
+                        // 2. 민원인 본인 정보 수정/탈퇴 전용 마이페이지
+                        .requestMatchers("/api/user/me", "/user/me").hasRole("CITIZEN")
                         
                         // 3. 민원인 전용 비즈니스 처리 영역
-                        .requestMatchers("/citizen/**").hasAnyRole("CITIZEN", "ADMIN")
+                        .requestMatchers("/api/citizen/**", "/citizen/**").hasAnyRole("CITIZEN", "ADMIN")
                         
-                        // 4. [인사팀 전용 사원 관리 경로] /admin 경로와 직무 완전 격리 분리 완료
-                        .requestMatchers("/hr/**").hasAnyRole("HR", "ADMIN")
+                        // 4. [인사팀 전용 사원 관리 경로]
+                        .requestMatchers("/api/hr/**", "/hr/**").hasAnyRole("HR", "ADMIN")
                         
-                        // 5. ⭕ [파견관리팀 전용 관제 경로] 스키마 공식 명칭 DISPATCHER 교정 완료 (403 방어)
-                        .requestMatchers("/dispatch/**").hasAnyRole("DISPATCHER", "ADMIN")
+                        // 5. ⭕ [파견관리팀 전용 관제 경로] 스키마 공식 명칭 DISPATCHER 교정 완료
+                        .requestMatchers("/api/dispatch/**", "/dispatch/**").hasAnyRole("DISPATCHER", "ADMIN")
                         
-                        // 6. [현장근무자 전용 복구 경로] 순수 WORKER만 단독 접근 허용 (관리자 진입 불가)
-                        .requestMatchers("/worker/**").hasRole("WORKER")
+                        // 6. [현장근무자 전용 복구 경로] 순수 WORKER만 단독 접근 허용
+                        .requestMatchers("/api/worker/**", "/worker/**").hasRole("WORKER")
                         
                         // 7. 최고 관리자 전용 서버 마스터 시스템 통제 경로
-                        .requestMatchers("/admin/system/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/system/**", "/admin/system/**").hasRole("ADMIN")
                         
                         .anyRequest().authenticated()
                 )

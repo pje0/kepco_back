@@ -3,8 +3,11 @@ package com.kepco.auth.service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import com.kepco.auth.dto.AdminUserRegisterDto;
+import com.kepco.auth.dto.AdminUserResponseDto;
 import com.kepco.auth.dto.AdminUserUpdateRequestDto;
 import com.kepco.auth.dto.RegisterRequestDto;
 import com.kepco.auth.dto.UserUpdateRequestDto;
@@ -198,5 +201,22 @@ public class AuthService {
 
         userRepository.delete(user);
         log.info("@# 사원 데이터 전체 영구 삭제 완료 (퇴사 발령 마감)");
+    }
+    /**
+     * 8. [인사팀 전용] 임직원 전체 목록 조회 (JPA 영속성 최적화 및 DTO 통합 파싱)
+     * - 'ROLE_CITIZEN'이 아닌 모든 역할을 임직원으로 취급하여 신규 보직 추가에 유연하게 대응합니다.
+     * - 부모(User)와 자식(RecoveryWorker) 테이블을 한방에 긁어와 N+1 성능 저하를 차단합니다.
+     */
+    @Transactional(readOnly = true) // 💡 대량 조회 성능 최적화 보장
+    public List<AdminUserResponseDto> getAllEmployees() {
+        log.info("@# AuthService - 인사팀/관리자에 의한 임직원 명부 전체 조회 실행");
+
+        // 1. Repository의 Fetch Join 쿼리를 호출하여 엔티티 리스트 획득
+        List<User> employees = userRepository.findAllEmployeesWithProfile();
+
+        // 2. Java Stream API를 활용하여 안전하게 Response DTO 리스트로 일괄 래핑 및 변환
+        return employees.stream()
+                .map(AdminUserResponseDto::new)
+                .collect(Collectors.toList());
     }
 }

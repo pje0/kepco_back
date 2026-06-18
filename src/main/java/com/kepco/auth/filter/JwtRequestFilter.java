@@ -19,7 +19,15 @@ import java.io.IOException;
 public class JwtRequestFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
-
+    
+    @Override
+    protected boolean shouldNotFilter(jakarta.servlet.http.HttpServletRequest request) throws jakarta.servlet.ServletException {
+        String path = request.getRequestURI();
+        
+        // 리액트가 찌르는 가입 주소 규격 매핑 (CORS Preflight인 OPTIONS 요청과 /api/register 패스를 예외 처리)
+        return path.equals("/api/register") || path.equals("/register") || request.getMethod().equals("OPTIONS");
+    }
+    
     // 리액트에서 오는 모든 API 요청마다 딱 한 번씩 실행되는 필터 검사 로직
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)

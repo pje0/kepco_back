@@ -20,9 +20,9 @@ public class RecoveryWorker {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 🔗 1:1 관계 설정 - 부모 users 테이블의 id를 user_id(FK) 컬럼으로 참조
+    // 🔗 1:1 관계 설정 - 부모 users 테이블의 id를 users_id(FK) 컬럼으로 참조
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "users_id", nullable = false, unique = true) // 🔴 [교정 완료] 실제 DB의 스펙과 완벽 싱크 매칭 ('user_id' -> 'users_id')
     private User user;
 
     @Column(name = "emp_number", unique = true, nullable = false, length = 50)

@@ -44,6 +44,13 @@ public class Report {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    // 🚨 추가: v0.8 DB 스키마와 싱크 맞추기 (이게 없으면 validate 에러 남!)
+    @Column(name = "ai_category", length = 50)
+    private String aiCategory;
+
+    @Column(name = "ai_priority", length = 20)
+    private String aiPriority;
+
     @Builder
     public Report(Long citizenId, String title, String content, String region, String district, String address) {
         this.citizenId = citizenId;

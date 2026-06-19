@@ -16,19 +16,15 @@ public class ReportController {
 
     private final ReportService reportService;
 
-    /**
-     * 시민 민원 접수 API
-     */
+    // 시민 민원 접수 API
     @PostMapping
     public ResponseEntity<Long> createReport(@RequestBody ReportCreateRequest request) {
         Long reportId = reportService.createReport(request);
         return ResponseEntity.ok(reportId);
     }
 
-    /**
-     * 내 민원 조회 API
-     * 프론트엔드의 /api/reports/citizen/{id} 형식 대응
-     */
+    // 내 민원 조회 API
+    // 프론트엔드의 /api/reports/citizen/{id} 형식 대응
     @GetMapping("/citizen/{citizenId}")
     public ResponseEntity<List<ReportResponse>> getMyReports(@PathVariable Long citizenId) {
         List<ReportResponse> responses = reportService.getMyReports(citizenId);

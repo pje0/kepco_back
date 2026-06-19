@@ -18,9 +18,7 @@ public class ReportService {
 
     private final ReportRepository reportRepository;
 
-    /**
-     * 민원 접수 (Create)
-     */
+    // 민원 접수 (Create)
     @Transactional
     public Long createReport(ReportCreateRequest request) {
         Report report = Report.builder()
@@ -35,9 +33,7 @@ public class ReportService {
         return reportRepository.save(report).getId();
     }
 
-    /**
-     * 내 민원 목록 조회 (Read)
-     */
+    // 내 민원 목록 조회 (Read)
     public List<ReportResponse> getMyReports(Long citizenId) {
         return reportRepository.findAllByCitizenIdOrderByCreatedAtDesc(citizenId)
                 .stream()

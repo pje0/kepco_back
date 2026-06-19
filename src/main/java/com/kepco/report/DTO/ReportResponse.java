@@ -30,14 +30,22 @@ public class ReportResponse {
         
         // 프론트엔드의 상태 라벨과 맞추기 위한 한글 변환
         switch (report.getStatus()) {
-            case "in_progress": this.status = "처리중"; break;
-            case "resolved": this.status = "처리완료"; break;
-            default: this.status = "미처리"; break;
+            case "in_progress": 
+            case "working": // working 상태 대응 추가 (dispatch 연동 고려)
+                this.status = "처리중"; 
+                break;
+            case "resolved": 
+            case "completed": // completed 상태 대응 추가
+                this.status = "처리완료"; 
+                break;
+            default: 
+                this.status = "미처리"; 
+                break;
         }
         
         this.createdAt = report.getCreatedAt();
         
-        // TODO: category, assignedWorkerName 등은 타 테이블 조인 로직 추가 후 변경 필요
-        this.category = "분석 대기"; 
+        // 🚨 수정: 엔티티에서 AI 분석 카테고리를 꺼내오고, 아직 없으면 "분석 대기" 표출
+        this.category = report.getAiCategory() != null ? report.getAiCategory() : "분석 대기"; 
     }
 }

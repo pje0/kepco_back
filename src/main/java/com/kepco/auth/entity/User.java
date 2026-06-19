@@ -94,6 +94,8 @@ public class User {
     public void changePhone(String phone) { this.phone = phone; }
     public void changeRole(String newRole) { this.role = newRole; }
     public void setHiredAt(LocalDate hiredAt) { this.hiredAt = hiredAt; }
+    public void changeEmpNumber(String empNumber) { this.empNumber = empNumber; }
+    public void changeDepartment(String department) { this.department = department; }
 
     /**
      * 💡 [핵심 연쇄 저장 메서드] 

@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kepco.auth.dto.AdminUserRegisterDto;       // 💡 사원 가입용 DTO 임포트
-import com.kepco.auth.dto.AdminUserUpdateRequestDto; // 💡 사원 수정용 DTO 임포트
 import com.kepco.auth.dto.AdminUserResponseDto;      // 💡 [추가] 사원 목록 응답용 DTO 임포트
+import com.kepco.auth.dto.AdminUserUpdateRequestDto; // 💡 사원 수정용 DTO 임포트
 import com.kepco.auth.dto.RegisterRequestDto;
 import com.kepco.auth.dto.UserUpdateRequestDto;
 import com.kepco.auth.repository.UserRepository;
@@ -166,6 +165,10 @@ public class AuthController {
      *  3. 로그인 회원 공통 인증 기능 (내 정보 조회)
      * ========================================================================= */
 
+    /* =========================================================================
+     *  3. 로그인 회원 공통 인증 기능 (내 정보 조회)
+     * ========================================================================= */
+
     /**
      * 3-1. 현재 로그인한 사용자의 최신 상세 정보 조회 API
      * - URL: GET /api/auth/me
@@ -187,14 +190,14 @@ public class AuthController {
             String rawRole = dbUser.getRole() != null ? dbUser.getRole() : "ROLE_CITIZEN";
             String finalRole = rawRole.toUpperCase(); // 무조건 ROLE_WORKER, ROLE_ADMIN 형태로 고정
 
-            Map<String, Object> userData = Map.of(
-                "username", username,
-                "role", finalRole,          // ⭕ 프론트엔드 표준 규격인 "ROLE_WORKER", "ROLE_CITIZEN" 등으로 반환
-                "name", dbUser.getName(),   // DB에 기록된 진짜 실명 반환
-                "phone", dbUser.getPhone(),  
-                "email", dbUser.getEmail(),
-                "department", dbUser.getDepartment()
-            );
+            // 💡 [교정]: Map.of는 null 포함 시 500 NPE 에러를 발생시키므로, null-safe한 HashMap으로 전면 교체
+            java.util.Map<String, Object> userData = new java.util.HashMap<>();
+            userData.put("username", username);
+            userData.put("role", finalRole);
+            userData.put("name", dbUser.getName());
+            userData.put("phone", dbUser.getPhone() != null ? dbUser.getPhone() : "");
+            userData.put("email", dbUser.getEmail() != null ? dbUser.getEmail() : "");
+            userData.put("department", dbUser.getDepartment() != null ? dbUser.getDepartment() : "");
 
             return ResponseEntity.ok(userData);
             
@@ -203,3 +206,4 @@ public class AuthController {
         }
     }
 }
+

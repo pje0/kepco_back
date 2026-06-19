@@ -129,31 +129,34 @@ public class AuthService {
     @Transactional
     public void updateEmployeeInfoByAdmin(Long id, AdminUserUpdateRequestDto updateRequest) {
         log.info("@# AuthService - 사원 정보 및 AI 스펙 수정 시도 (사원 고유번호: {})", id);
+        log.info("@# [진단 콘솔] 요청 DTO 확인 -> 사번: {}, 부서: {}, 구역: {}, 직급: {}", 
+                 updateRequest.getEmpNumber(), updateRequest.getDepartment(), updateRequest.getAssignedDistrict(), updateRequest.getGrade());
         
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사원 정보입니다."));
 
+        log.info("@# [진단 콘솔] DB에서 조회된 유저 기존 정보 -> 이름: {}, 권한: {}, 사번: {}, 부서: {}", 
+                 user.getName(), user.getRole(), user.getEmpNumber(), user.getDepartment());
+
         if (updateRequest.getName() != null) user.changeName(updateRequest.getName());
         if (updateRequest.getEmail() != null) user.changeEmail(updateRequest.getEmail());
         if (updateRequest.getPhone() != null) user.changePhone(updateRequest.getPhone());
+        if (updateRequest.getEmpNumber() != null) user.changeEmpNumber(updateRequest.getEmpNumber());
+        if (updateRequest.getDepartment() != null) user.changeDepartment(updateRequest.getDepartment());
+
+        log.info("@# [진단 콘솔] 부모(User) 필드 변경 완료 후 검증 상태 -> 사번: {}, 부서: {}", user.getEmpNumber(), user.getDepartment());
 
         // 💡 [교정]: 2번 테이블 스펙 변경 트리거 조건도 'ROLE_WORKER'로 싱크 완료
         if ("ROLE_WORKER".equalsIgnoreCase(user.getRole()) && user.getRecoveryWorker() != null) {
-            if (updateRequest.getDepartment() != null) {
-                try {
-                    java.lang.reflect.Field field = User.class.getDeclaredField("department");
-                    field.setAccessible(true);
-                    field.set(user, updateRequest.getDepartment());
-                } catch (Exception e) {
-                    log.error("department 수정 중 오류 발생", e);
-                }
-            }
+            log.info("@# [진단 콘솔] ROLE_WORKER 조건 일치 확인 -> 자식 테이블(RecoveryWorker) 수정 진입");
             user.getRecoveryWorker().updateWorkerSpecs(
                     updateRequest.getAssignedDistrict(),
                     updateRequest.getCertificate(),
                     updateRequest.getGrade()
             );
             log.info("@# 사원의 OpenAI 추천 데이터(자격증/직급/구역)가 실시간 업데이트 되었습니다.");
+        } else {
+            log.info("@# [진단 콘솔] 워커 조건 미충족 혹은 자식 객체 없음으로 인해 자식 테이블 수정 스킵 (현재 권한: {})", user.getRole());
         }
     }
 

@@ -139,8 +139,16 @@ public class AuthService {
 
         // 💡 [교정]: 2번 테이블 스펙 변경 트리거 조건도 'ROLE_WORKER'로 싱크 완료
         if ("ROLE_WORKER".equalsIgnoreCase(user.getRole()) && user.getRecoveryWorker() != null) {
+            if (updateRequest.getDepartment() != null) {
+                try {
+                    java.lang.reflect.Field field = User.class.getDeclaredField("department");
+                    field.setAccessible(true);
+                    field.set(user, updateRequest.getDepartment());
+                } catch (Exception e) {
+                    log.error("department 수정 중 오류 발생", e);
+                }
+            }
             user.getRecoveryWorker().updateWorkerSpecs(
-                    updateRequest.getDepartment(),
                     updateRequest.getAssignedDistrict(),
                     updateRequest.getCertificate(),
                     updateRequest.getGrade()
@@ -148,6 +156,7 @@ public class AuthService {
             log.info("@# 사원의 OpenAI 추천 데이터(자격증/직급/구역)가 실시간 업데이트 되었습니다.");
         }
     }
+
 
     /**
      * 6. [인사팀 전용] 사원 직무 권한(Role) 변경 처리 
@@ -170,6 +179,17 @@ public class AuthService {
             // 💡 [교정]: 분기 규칙 검사 시에도 전부 'ROLE_WORKER' 기준으로 철저하게 방어
             // [분기 A] 타팀 -> 현장직(WORKER) 최초 보직 이동 시 (신규 생성)
             if ("ROLE_WORKER".equals(newRole) && user.getRecoveryWorker() == null) {
+                try {
+                    java.lang.reflect.Field empField = User.class.getDeclaredField("empNumber");
+                    empField.setAccessible(true);
+                    empField.set(user, "EMP-" + user.getId() + "-" + System.currentTimeMillis() % 10000);
+
+                    java.lang.reflect.Field deptField = User.class.getDeclaredField("department");
+                    deptField.setAccessible(true);
+                    deptField.set(user, "미배정 부서");
+                } catch (Exception e) {
+                    log.error("보직 변경 중 empNumber 또는 department 설정 오류 발생", e);
+                }
                 user.createRecoveryWorkerProfile(
                         "EMP-" + user.getId() + "-" + System.currentTimeMillis() % 10000,
                         "미배정 부서", "대기 지역", "자격증 정보를 등록해 주세요", "JUNIOR"

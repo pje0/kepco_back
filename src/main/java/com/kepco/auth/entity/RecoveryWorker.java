@@ -25,12 +25,6 @@ public class RecoveryWorker {
     @JoinColumn(name = "users_id", nullable = false, unique = true) // 🔴 [교정 완료] 실제 DB의 스펙과 완벽 싱크 매칭 ('user_id' -> 'users_id')
     private User user;
 
-    @Column(name = "emp_number", unique = true, nullable = false, length = 50)
-    private String empNumber; // 사번
-
-    @Column(length = 100)
-    private String department; // 소속 지사 및 부서
-
     @Column(name = "assigned_district", nullable = false, length = 50)
     private String assignedDistrict; // 담당 구역 (OpenAI 지역 매칭용)
 
@@ -51,11 +45,9 @@ public class RecoveryWorker {
     private LocalDateTime updatedAt;
 
     @Builder
-    public RecoveryWorker(User user, String empNumber, String department, String assignedDistrict, 
+    public RecoveryWorker(User user, String assignedDistrict, 
                           String certificate, String grade, String workStatus) {
         this.user = user;
-        this.empNumber = empNumber;
-        this.department = department;
         this.assignedDistrict = assignedDistrict;
         this.certificate = certificate;
         this.grade = grade;
@@ -67,8 +59,7 @@ public class RecoveryWorker {
     // =========================================================================
     // 🛠️ 인사팀 전용 OpenAI 스펙 실시간 수정 메서드 (변경 감지 연동)
     // =========================================================================
-    public void updateWorkerSpecs(String department, String assignedDistrict, String certificate, String grade) {
-        if (department != null) this.department = department;
+    public void updateWorkerSpecs(String assignedDistrict, String certificate, String grade) {
         if (assignedDistrict != null) this.assignedDistrict = assignedDistrict;
         if (certificate != null) this.certificate = certificate;
         if (grade != null) this.grade = grade;

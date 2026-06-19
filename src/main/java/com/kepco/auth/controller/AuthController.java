@@ -184,14 +184,16 @@ public class AuthController {
             com.kepco.auth.entity.User dbUser = userRepository.findByUsername(username)
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 계정입니다."));
 
-            // 💡 [교정]: 'ROLE_' 접두사를 제거하지 않고 대문자로 통일하여 프로젝트 표준 규격 유지
             String rawRole = dbUser.getRole() != null ? dbUser.getRole() : "ROLE_CITIZEN";
             String finalRole = rawRole.toUpperCase(); // 무조건 ROLE_WORKER, ROLE_ADMIN 형태로 고정
 
             Map<String, Object> userData = Map.of(
                 "username", username,
                 "role", finalRole,          // ⭕ 프론트엔드 표준 규격인 "ROLE_WORKER", "ROLE_CITIZEN" 등으로 반환
-                "name", dbUser.getName()    // DB에 기록된 진짜 실명 반환
+                "name", dbUser.getName(),   // DB에 기록된 진짜 실명 반환
+                "phone", dbUser.getPhone(),  
+                "email", dbUser.getEmail(),
+                "department", dbUser.getDepartment()
             );
 
             return ResponseEntity.ok(userData);

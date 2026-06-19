@@ -54,6 +54,12 @@ public class User {
     @Column(name = "hired_at")
     private LocalDate hiredAt; // ⭕ 직원 입사 일자 매칭 (일반 시민은 null)
 
+    @Column(name = "emp_number", unique = true, length = 50)
+    private String empNumber; // 사번
+
+    @Column(length = 100)
+    private String department; // 소속 지사 및 부서
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -65,7 +71,7 @@ public class User {
     private RecoveryWorker recoveryWorker; // 💡 자식 객체 바인딩 (주의: 다음 스텝에서 생성 예정)
 
     @Builder
-    public User(String username, String password, String name, String email, String phone, String role, LocalDate hiredAt) {
+    public User(String username, String password, String name, String email, String phone, String role, LocalDate hiredAt, String empNumber, String department) {
         this.username = username;
         this.password = password;
         this.name = name;
@@ -73,6 +79,8 @@ public class User {
         this.phone = phone;
         this.role = role != null ? role : "CITIZEN";
         this.hiredAt = hiredAt;
+        this.empNumber = empNumber;
+        this.department = department;
     }
 
     // =========================================================================
@@ -93,9 +101,9 @@ public class User {
      * 이 메서드 덕분에 자바 단에서 save(user) 한 줄만 실행해도 2번 테이블까지 트랜잭션 내에서 한 세트로 연쇄 인서트가 끝납니다.
      */
     public void createRecoveryWorkerProfile(String empNumber, String department, String assignedDistrict, String certificate, String grade) {
+        this.empNumber = empNumber;
+        this.department = department;
         this.recoveryWorker = RecoveryWorker.builder()
-                .empNumber(empNumber)
-                .department(department)
                 .assignedDistrict(assignedDistrict)
                 .certificate(certificate)
                 .grade(grade)

@@ -43,19 +43,17 @@ public class AdminUserResponseDto {
         this.phone = user.getPhone();
         this.role = user.getRole();
         this.hiredAt = user.getHiredAt();
+        this.empNumber = user.getEmpNumber();
+        this.department = user.getDepartment();
 
         // 💡 비즈니스 규칙 및 엔티티 Getter 명칭 정밀 반영
         if (user.getRecoveryWorker() != null) {
-            this.empNumber = user.getRecoveryWorker().getEmpNumber();
-            this.department = user.getRecoveryWorker().getDepartment();
             this.assignedDistrict = user.getRecoveryWorker().getAssignedDistrict();
             this.certificate = user.getRecoveryWorker().getCertificate();
             this.grade = user.getRecoveryWorker().getGrade();
             this.workStatus = user.getRecoveryWorker().getWorkStatus(); // ⭕ getWorkStatus()로 정확히 호출
         } else {
             // 자식 프로필이 없는 순수 내근직(ADMIN, HR, DISPATCHER) 상태일 때의 방어용 기본값 세팅
-            this.empNumber = "";
-            this.department = "";
             this.assignedDistrict = "";
             this.certificate = "";
             this.grade = "";

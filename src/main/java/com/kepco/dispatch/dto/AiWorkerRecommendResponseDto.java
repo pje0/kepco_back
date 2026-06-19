@@ -10,7 +10,7 @@ public class AiWorkerRecommendResponseDto {
 
     @Data
     public static class RecommendedWorker {
-        private Long userId;            // 사원 고유 번호 (ID)
+        private Long workerId;          // ⭕ [교정 완료]: 실제 DB 키 스펙인 recovery_worker.id 매핑용 변수명 싱크 조율
         private String name;            // 사원 실명
         private String empNumber;       // 사번
         private String department;      // 소속 부서

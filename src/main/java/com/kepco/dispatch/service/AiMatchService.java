@@ -26,10 +26,11 @@ public class AiMatchService {
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
-    @Value("${openai.api-key}")
+    // 💡 [교정]: application.yml에 키가 선언되어 있지 않더라도 서버가 터지지 않도록 디폴트 방어 속성(:) 주입
+    @Value("${openai.api-key:dummy-key-for-preventing-crash}")
     private String apiKey;
 
-    @Value("${openai.model}")
+    @Value("${openai.model:gpt-4o}")
     private String model;
 
     /**
@@ -45,7 +46,7 @@ public class AiMatchService {
 
         List<Map<String, Object>> workersData = allWorkers.stream().map(u -> {
             java.util.Map<String, Object> map = new java.util.HashMap<>();
-            map.put("userId", u.getId());
+            map.put("workerId", u.getRecoveryWorker().getId()); 
             map.put("name", u.getName());
             map.put("empNumber", u.getEmpNumber() != null ? u.getEmpNumber() : "");
             map.put("department", u.getDepartment() != null ? u.getDepartment() : "");
@@ -61,7 +62,7 @@ public class AiMatchService {
             String systemPrompt = "당신은 한국전력공사(KEPCO)의 관제 AI입니다. "
                     + "주어진 사원 명단에서 재난 상황(위치, 필요기술)에 가장 적합한 요원을 선별해 스코어링 하세요. "
                     + "반드시 다음 JSON 포맷 규격으로만 응답해야 하며, 다른 텍스트는 절대 금지합니다: "
-                    + "{\"recommendations\": [{\"userId\": 1, \"name\": \"홍길동\", \"empNumber\": \"EMP-01\", \"department\": \"부서\", \"score\": 95, \"reason\": \"이유\"}]}";
+                    + "{\"recommendations\": [{\"workerId\": 1, \"name\": \"홍길동\", \"empNumber\": \"EMP-01\", \"department\": \"부서\", \"score\": 95, \"reason\": \"이유\"}]}";
 
             String userPrompt = String.format("### 재난 상황\n- 종류: %s\n- 발생 위치: %s\n- 필요 기술: %s\n\n### 가용 사원 명단\n%s", 
                     disasterType, location, requiredSkill, workersJsonString);
@@ -72,7 +73,7 @@ public class AiMatchService {
                             Map.of("role", "system", "content", systemPrompt),
                             Map.of("role", "user", "content", userPrompt)
                     ),
-                    "response_format", Map.of("type", "json_object")
+                    "response_format", Map.of("type", "json_object") 
             );
 
             HttpClient client = HttpClient.newHttpClient();

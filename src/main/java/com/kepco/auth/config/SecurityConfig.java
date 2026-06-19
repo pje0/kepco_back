@@ -64,7 +64,9 @@ public class SecurityConfig {
                         .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                         
                         // 2. 민원인 본인 정보 수정/탈퇴 전용 마이페이지
-                        .requestMatchers("/api/user/me", "/user/me").hasRole("CITIZEN")
+//                        .requestMatchers("/api/user/me", "/user/me").hasRole("CITIZEN")
+                        // 본인 정보 수정 기능은 전 직원 공용임 - 박정은
+                        .requestMatchers("/api/user/me", "/user/me").authenticated()
                         
                         // 3. 민원인 전용 비즈니스 처리 영역
                         .requestMatchers("/api/citizen/**", "/citizen/**").hasAnyRole("CITIZEN", "ADMIN")

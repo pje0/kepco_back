@@ -2,7 +2,6 @@ package com.kepco.notice.DTO;
 
 import com.kepco.notice.entity.Notice;
 import lombok.Getter;
-
 import java.time.LocalDateTime;
 
 @Getter
@@ -10,10 +9,14 @@ public class NoticeResponse {
     private Long id;
     private String title;
     private String content;
-    private String author;     // 프론트엔드 요구사항 (원래는 User 테이블 조인 필요)
-    private String priority;   // 프론트엔드 요구사항 (high, normal, low)
+    private String author;     
+    private String department; 
     private Integer views;
     private LocalDateTime createdAt;
+    
+    // 🚨 프론트엔드가 요구하는 두 가지 상태값을 모두 제공해야 화면이 깨지지 않습니다.
+    private Boolean isPinned;  // 목록 페이지용
+    private String priority;   // 상세 페이지용
 
     public NoticeResponse(Notice notice) {
         this.id = notice.getId();
@@ -22,10 +25,11 @@ public class NoticeResponse {
         this.views = notice.getViews();
         this.createdAt = notice.getCreatedAt();
         
-        // TODO: 실제 구현 시에는 writerId를 이용해 User 테이블에서 이름을 가져와야 합니다.
-        this.author = "관리자(" + notice.getWriterId() + ")"; 
+        this.department = notice.getDepartment(); 
+        this.author = "관리자"; 
         
-        // DB의 is_pinned를 프론트엔드의 priority 포맷으로 변환
+        // 🚨 필드 매핑 추가
+        this.isPinned = notice.getIsPinned(); 
         this.priority = notice.getIsPinned() ? "high" : "normal";
     }
 }

@@ -180,18 +180,18 @@ public class AuthController {
         try {
             String username = principal.getUsername();
             
-            // 🎯 DB에서 실제 계정 실시간 조회 (하드코딩 완전 제거)
+            // 🎯 DB에서 실제 계정 실시간 조회
             com.kepco.auth.entity.User dbUser = userRepository.findByUsername(username)
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 계정입니다."));
 
-            // 💡 DB에 'ROLE_ADMIN', 'ROLE_CITIZEN' 형태로 들어있으므로 프론트엔드 배지 규격(ADMIN, CITIZEN)에 맞게 변환
+            // 💡 [교정]: 'ROLE_' 접두사를 제거하지 않고 대문자로 통일하여 프로젝트 표준 규격 유지
             String rawRole = dbUser.getRole() != null ? dbUser.getRole() : "ROLE_CITIZEN";
-            String cleanRole = rawRole.toUpperCase().replace("ROLE_", ""); 
+            String finalRole = rawRole.toUpperCase(); // 무조건 ROLE_WORKER, ROLE_ADMIN 형태로 고정
 
             Map<String, Object> userData = Map.of(
                 "username", username,
-                "role", cleanRole,          // CITIZEN, WORKER, HR, ADMIN 등으로 깔끔하게 반환
-                "name", dbUser.getName()    // ⭕ DB에 기록된 진짜 실명 반환 (김시민, 황인사, 파견반장 등)
+                "role", finalRole,          // ⭕ 프론트엔드 표준 규격인 "ROLE_WORKER", "ROLE_CITIZEN" 등으로 반환
+                "name", dbUser.getName()    // DB에 기록된 진짜 실명 반환
             );
 
             return ResponseEntity.ok(userData);

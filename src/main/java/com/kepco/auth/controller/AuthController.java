@@ -20,6 +20,7 @@ import com.kepco.auth.dto.AdminUserUpdateRequestDto; // 💡 사원 수정용 DT
 import com.kepco.auth.dto.AdminUserResponseDto;      // 💡 [추가] 사원 목록 응답용 DTO 임포트
 import com.kepco.auth.dto.RegisterRequestDto;
 import com.kepco.auth.dto.UserUpdateRequestDto;
+import com.kepco.auth.repository.UserRepository;
 import com.kepco.auth.service.AuthService;
 
 import jakarta.validation.Valid;
@@ -30,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserRepository userRepository; 
 
     /* =========================================================================
      *  1. 대민 민원인 전용 기능 (ROLE_CITIZEN 전용 대문)
@@ -169,7 +171,6 @@ public class AuthController {
      * - URL: GET /api/auth/me
      * - 프론트엔드에서 새로고침 하거나 로그인 직후 세션 유지를 위해 토큰을 검증하고 데이터를 가져오는 핵심 창구입니다.
      */
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
     @GetMapping("/api/auth/me")
     public ResponseEntity<?> getCurrentUserInfo(@AuthenticationPrincipal User principal) {
         if (principal == null) {
@@ -177,22 +178,26 @@ public class AuthController {
         }
         
         try {
-            String loginId = principal.getUsername();
+            String username = principal.getUsername();
             
-            String role = principal.getAuthorities().stream()
-                    .map(org.springframework.security.core.GrantedAuthority::getAuthority)
-                    .findFirst()
-                    .orElse("ROLE_CITIZEN");
+            // 🎯 DB에서 실제 계정 실시간 조회 (하드코딩 완전 제거)
+            com.kepco.auth.entity.User dbUser = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 계정입니다."));
+
+            // 💡 DB에 'ROLE_ADMIN', 'ROLE_CITIZEN' 형태로 들어있으므로 프론트엔드 배지 규격(ADMIN, CITIZEN)에 맞게 변환
+            String rawRole = dbUser.getRole() != null ? dbUser.getRole() : "ROLE_CITIZEN";
+            String cleanRole = rawRole.toUpperCase().replace("ROLE_", ""); 
 
             Map<String, Object> userData = Map.of(
-                "username", loginId,
-                "role", role,
-                "name", loginId.equals("admin") ? "최관리" : "한전직원"
+                "username", username,
+                "role", cleanRole,          // CITIZEN, WORKER, HR, ADMIN 등으로 깔끔하게 반환
+                "name", dbUser.getName()    // ⭕ DB에 기록된 진짜 실명 반환 (김시민, 황인사, 파견반장 등)
             );
 
             return ResponseEntity.ok(userData);
+            
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of("message", "사용자 정보 조회 실패: " + e.getMessage()));
         }
     }
 }

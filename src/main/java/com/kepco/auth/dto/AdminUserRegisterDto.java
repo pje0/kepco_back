@@ -34,12 +34,11 @@ public class AdminUserRegisterDto {
     // =========================================================================
     // [2번 recovery_worker 테이블 바인딩용 데이터 - 💡 OpenAI 추천 핵심 소스]
     // =========================================================================
-    @NotBlank(message = "사번은 필수 입력 항목입니다.")
+
     private String empNumber;         // ⭕ DB: emp_number
 
     private String department;        // ⭕ DB: department (소속 지사 및 부서)
 
-    @NotBlank(message = "담당 구역 지정은 필수입니다.")
     private String assignedDistrict;  // ⭕ DB: assigned_district (OpenAI 지역 매칭용)
 
     private String certificate;       // ⭕ DB: certificate (OpenAI 자격증 분석용 - 예: 전기기사)

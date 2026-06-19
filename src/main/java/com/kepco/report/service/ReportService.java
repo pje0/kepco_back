@@ -5,12 +5,14 @@ import com.kepco.report.DTO.ReportResponse;
 import com.kepco.report.entity.Report;
 import com.kepco.report.repository.ReportRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -21,6 +23,7 @@ public class ReportService {
     // 민원 접수 (Create)
     @Transactional
     public Long createReport(ReportCreateRequest request) {
+        log.info("⚙️ 민원 데이터 엔티티 변환 및 DB 저장 시작...");
         Report report = Report.builder()
                 .citizenId(request.getCitizenId())
                 .title(request.getTitle())
@@ -30,11 +33,14 @@ public class ReportService {
                 .address(request.getAddress())
                 .build();
 
-        return reportRepository.save(report).getId();
+        Long savedId = reportRepository.save(report).getId();
+        log.info("⚙️ 민원 데이터 DB 저장 완료 (ID: {})", savedId);
+        return savedId;
     }
 
     // 내 민원 목록 조회 (Read)
     public List<ReportResponse> getMyReports(Long citizenId) {
+        log.info("⚙️ DB에서 시민 ID [{}]의 민원 목록을 최신순으로 조회합니다.", citizenId);
         return reportRepository.findAllByCitizenIdOrderByCreatedAtDesc(citizenId)
                 .stream()
                 .map(ReportResponse::new)

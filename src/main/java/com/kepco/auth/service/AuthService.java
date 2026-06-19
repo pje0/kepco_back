@@ -129,20 +129,64 @@ public class AuthService {
     @Transactional
     public void updateEmployeeInfoByAdmin(Long id, AdminUserUpdateRequestDto updateRequest) {
         log.info("@# AuthService - 사원 정보 및 AI 스펙 수정 시도 (사원 고유번호: {})", id);
-        log.info("@# [진단 콘솔] 요청 DTO 확인 -> 사번: {}, 부서: {}, 구역: {}, 직급: {}", 
-                 updateRequest.getEmpNumber(), updateRequest.getDepartment(), updateRequest.getAssignedDistrict(), updateRequest.getGrade());
+        log.info("@# [진단 1] 프론트에서 날아온 전송 DTO 데이터 -> 이름: {}, 권한(Role): {}, 사번: {}, 부서: {}", 
+                 updateRequest.getName(), updateRequest.getRole(), updateRequest.getEmpNumber(), updateRequest.getDepartment());
+        log.info("@# [진단 1] 프론트에서 날아온 확장 스펙 -> 구역: {}, 자격증: {}, 직급: {}", 
+                 updateRequest.getAssignedDistrict(), updateRequest.getCertificate(), updateRequest.getGrade());
         
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사원 정보입니다."));
 
-        log.info("@# [진단 콘솔] DB에서 조회된 유저 기존 정보 -> 이름: {}, 권한: {}, 사번: {}, 부서: {}", 
+        log.info("@# [진단 2] DB 현재 저장 상태 -> 이름: {}, 권한(Role): {}, 사번: {}, 부서: {}", 
                  user.getName(), user.getRole(), user.getEmpNumber(), user.getDepartment());
+        log.info("@# [진단 2] DB 자식 프로필 존재 여부: {}", (user.getRecoveryWorker() != null ? "존재함 (현재 상태: " + user.getRecoveryWorker().getWorkStatus() + ")" : "없음(내근직)"));
 
         if (updateRequest.getName() != null) user.changeName(updateRequest.getName());
         if (updateRequest.getEmail() != null) user.changeEmail(updateRequest.getEmail());
         if (updateRequest.getPhone() != null) user.changePhone(updateRequest.getPhone());
         if (updateRequest.getEmpNumber() != null) user.changeEmpNumber(updateRequest.getEmpNumber());
         if (updateRequest.getDepartment() != null) user.changeDepartment(updateRequest.getDepartment());
+
+        // 💡 [교정]: 프론트 통합 폼 대응을 위해 직무 권한(Role) 동적 변경 감지 및 연쇄 세션 제어 로직 통합 주입
+        if (updateRequest.getRole() != null) {
+            String oldRole = user.getRole();
+            String newRole = "ROLE_" + updateRequest.getRole().toUpperCase();
+            
+            log.info("@# [진단 3] 보직 변경 비교 연산 진입 -> 기존 권한: {} || 변경 요청 권한: {}", oldRole, newRole);
+            log.info("@# [진단 3] 두 권한이 다릅니까? -> {}", (!oldRole.equalsIgnoreCase(newRole)));
+
+            if (!oldRole.equalsIgnoreCase(newRole)) {
+                user.changeRole(newRole);
+                log.info("@# [진단 4] 부모 권한 필드 객체 변경 완료 -> 현재 user.getRole(): {}", user.getRole());
+                
+                // [분기 A] 타팀 -> 현장직(WORKER) 최초 보직 이동 시 (신규 확장 프로필 자동 생성)
+                if ("ROLE_WORKER".equals(newRole) && user.getRecoveryWorker() == null) {
+                    log.info("@# [진단 5] [분기 A] 조건 성립: 내근직 -> 현장직 전환 발동");
+                    user.createRecoveryWorkerProfile(
+                            user.getEmpNumber() != null ? user.getEmpNumber() : "EMP-" + user.getId(),
+                            user.getDepartment() != null ? user.getDepartment() : "미배정 부서",
+                            updateRequest.getAssignedDistrict() != null ? updateRequest.getAssignedDistrict() : "대기 지역",
+                            updateRequest.getCertificate() != null ? updateRequest.getCertificate() : "정보 등록 필요",
+                            updateRequest.getGrade() != null ? updateRequest.getGrade() : "JUNIOR"
+                    );
+                    log.info("@# 🔗 [통합 발령] 현장 복구팀 프로필이 시스템에 새로 생상 및 인서트 되었습니다.");
+                }
+                // [분기 B] 기존 현장직(WORKER) -> 내근직(HR, DISPATCHER 등) 복귀 시 (출동 불가 잠금)
+                else if (!"ROLE_WORKER".equals(newRole) && "ROLE_WORKER".equals(oldRole) && user.getRecoveryWorker() != null) {
+                    log.info("@# [진단 5] [분기 B] 조건 성립: 현장직 -> 내근직 전환 발동");
+                    user.getRecoveryWorker().changeWorkStatus("UNAVAILABLE");
+                    log.info("@# 🔐 [통합 발령] 내근직 전환 감지: recovery_worker 데이터를 보존하고 '출동 불가(UNAVAILABLE)' 잠금 완료.");
+                }
+                // [분기 C] 과거 WORKER 이력이 있던 사람이 내근직에서 다시 WORKER로 복귀 시 (잠금 해제 / 대기 원복)
+                else if ("ROLE_WORKER".equals(newRole) && user.getRecoveryWorker() != null) {
+                    log.info("@# [진단 5] [분기 C] 조건 성립: 현장직 재복귀 발동");
+                    user.getRecoveryWorker().changeWorkStatus("AVAILABLE");
+                    log.info("@# 🔓 [통합 발령] 현장직 재복귀 감지: 기존 프로필을 재활용하여 '출동 가능(AVAILABLE)' 원복 완료.");
+                } else {
+                    log.info("@# [진단 5] 어떤 보직 변경 조건분기문에도 걸리지 않음 (스킵)");
+                }
+            }
+        }
 
         log.info("@# [진단 콘솔] 부모(User) 필드 변경 완료 후 검증 상태 -> 사번: {}, 부서: {}", user.getEmpNumber(), user.getDepartment());
 
@@ -153,14 +197,16 @@ public class AuthService {
                     updateRequest.getAssignedDistrict(),
                     updateRequest.getCertificate(),
                     updateRequest.getGrade()
-            );
+                );
             log.info("@# 사원의 OpenAI 추천 데이터(자격증/직급/구역)가 실시간 업데이트 되었습니다.");
         } else {
             log.info("@# [진단 콘솔] 워커 조건 미충족 혹은 자식 객체 없음으로 인해 자식 테이블 수정 스킵 (현재 권한: {})", user.getRole());
         }
+
+        // 💡 [교정]: 확실한 DB 물리 저장 보장을 위해 영속성 세션을 명시적으로 플러시 및 세이브 트리거 실행
+        userRepository.saveAndFlush(user);
+        log.info("@# [진단 6] 명시적 saveAndFlush 완료");
     }
-
-
     /**
      * 6. [인사팀 전용] 사원 직무 권한(Role) 변경 처리 
      */

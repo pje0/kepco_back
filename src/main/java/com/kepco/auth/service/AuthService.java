@@ -273,6 +273,7 @@ public class AuthService {
         userRepository.delete(user);
         log.info("@# 사원 데이터 전체 영구 삭제 완료 (퇴사 발령 마감)");
     }
+
     /**
      * 8. [인사팀 전용] 임직원 전체 목록 조회 (JPA 영속성 최적화 및 DTO 통합 파싱)
      * - 'ROLE_CITIZEN'이 아닌 모든 역할을 임직원으로 취급하여 신규 보직 추가에 유연하게 대응합니다.
@@ -282,12 +283,30 @@ public class AuthService {
     public List<AdminUserResponseDto> getAllEmployees() {
         log.info("@# AuthService - 인사팀/관리자에 의한 임직원 명부 전체 조회 실행");
 
-        // 1. Repository의 Fetch Join 쿼리를 호출하여 엔티티 리스트 획득
         List<User> employees = userRepository.findAllEmployeesWithProfile();
 
-        // 2. Java Stream API를 활용하여 안전하게 Response DTO 리스트로 일괄 래핑 및 변환
         return employees.stream()
                 .map(AdminUserResponseDto::new)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 🎯 [신규 탑재]: 9. 임직원 목록 서버사이드 페이징 및 키워드 동적 검색 조회
+     * - 기존 전체 조회(getAllEmployees) 아키텍처를 온전히 계승하며 대량 데이터 처리를 수행합니다.
+     * - 리액트 페이징 조작 바 구현을 위한 토탈 메타데이터를 포함한 Page 객체를 반환합니다.
+     */
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<AdminUserResponseDto> getEmployeesPageable(
+            String search, org.springframework.data.domain.Pageable pageable) {
+        
+        log.info("@# AuthService - 임직원 명부 오프셋 페이징 요청 처리 시작 [Page: {}, Size: {}, Keyword: {}]", 
+                 pageable.getPageNumber(), pageable.getPageSize(), search);
+
+        // 레포지토리의 페이지네이션 전용 분리 쿼리 호출 (countQuery 자동 매칭)
+        org.springframework.data.domain.Page<User> userPage = 
+                userRepository.findEmployeesWithProfilePageable(search, pageable);
+
+        // 기존 8번과 완벽하게 동일한 DTO 매핑 규칙(AdminUserResponseDto::new)을 적용하여 변환
+        return userPage.map(AdminUserResponseDto::new);
     }
 }

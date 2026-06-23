@@ -1,18 +1,5 @@
 package com.kepco.dispatch.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kepco.auth.entity.User;
-import com.kepco.auth.repository.UserRepository;
-import com.kepco.dispatch.dto.AiWorkerRecommendResponseDto;
-
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -23,6 +10,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kepco.auth.entity.User;
+import com.kepco.auth.repository.UserRepository;
+import com.kepco.dispatch.dto.AiWorkerRecommendResponseDto;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -70,10 +70,11 @@ public class AiMatchService {
         log.info("@# 조회된 작업자 수: {}", allWorkers.size());
 
         List<Map<String, Object>> workersData = allWorkers.stream().map(u -> {
-
             Map<String, Object> map = new HashMap<>();
 
-            map.put("workerId", u.getRecoveryWorker().getId());
+            // ⚡ [근본 해결]: 상세 프로필 일련번호인 getRecoveryWorker().getId()를 과감히 폐기하고,
+            // 실제 프론트엔드가 해독하여 바인딩할 사원 테이블(users)의 진짜 Primary Key인 u.getId() 축을 정밀 주입!
+            map.put("workerId", u.getId()); 
             map.put("name", u.getName());
             map.put("empNumber", u.getEmpNumber() != null ? u.getEmpNumber() : "");
             map.put("department", u.getDepartment() != null ? u.getDepartment() : "");
@@ -82,11 +83,9 @@ public class AiMatchService {
             map.put("grade", u.getRecoveryWorker().getGrade());
 
             return map;
-
         }).collect(Collectors.toList());
 
         try {
-
             String workersJsonString =
                     objectMapper.writeValueAsString(workersData);
 
@@ -169,9 +168,7 @@ public class AiMatchService {
                     AiWorkerRecommendResponseDto.class);
 
         } catch (Exception e) {
-
             log.error("@# OpenAI 기반 요원 추천 중 예외 발생", e);
-
             throw new RuntimeException(
                     "AI 요원 추천 연산 실패: " + e.getMessage(), e);
         }

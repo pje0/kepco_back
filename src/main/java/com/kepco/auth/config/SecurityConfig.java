@@ -59,7 +59,9 @@ public class SecurityConfig {
                         // 1. 로그인, 로그아웃 및 민원인 가입 창구 전면 허용 (개나소나 프리패스 구역)
                         .requestMatchers(
                             "/", "/login", "/register", 
-                            "/api/auth/login", "/api/auth/logout", "/api/auth/register", "/api/register"
+                            "/api/auth/login", "/api/auth/logout", "/api/auth/register", "/api/register",
+                            "/api/notices", "/api/notices/**", "/notices", "/notices/**",
+                            "/error"
                         ).permitAll()
                         .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                         

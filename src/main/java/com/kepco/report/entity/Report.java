@@ -37,8 +37,9 @@ public class Report {
     @Column(length = 300, nullable = false)
     private String address;
 
+    // ⚡ [대문자 개혁]: PostgreSQL 마이그레이션 스펙 일치를 위해 기본값을 대문자로 전면 교정
     @Column(length = 20)
-    private String status = "pending";
+    private String status = "PENDING";
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -59,6 +60,7 @@ public class Report {
         this.region = region;
         this.district = district;
         this.address = address;
-        this.status = "pending"; // 초기 상태는 미처리(pending)로 고정
+        //빌더 패턴을 통한 객체 생성 시 초기 상태도 확고하게 대문자 PENDING으로 고정
+        this.status = "PENDING"; 
     }
 }

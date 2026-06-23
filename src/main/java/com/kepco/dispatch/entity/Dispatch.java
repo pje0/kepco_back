@@ -3,7 +3,7 @@ package com.kepco.dispatch.entity;
 import com.kepco.auth.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.kepco.auth.entity.RecoveryWorker;
-import com.kepco.report.entity.Report; // 💡 우리가 찾은 Report 패키지 경로 매핑!
+import com.kepco.report.entity.Report; 
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -36,8 +36,9 @@ public class Dispatch {
     @JoinColumn(name = "dispatcher_id", nullable = false)
     private User dispatcher;
 
+    // ⚡ [대문자 개혁]: 403 및 데이터 충돌 단선을 방지하기 위해 기본값 문자열을 확고하게 대문자로 수선 완료
     @Column(length = 20, nullable = false)
-    private String status = "assigned"; // 기본값 'assigned' (배정완료)
+    private String status = "ASSIGNED"; 
 
     @Column(name = "assigned_at", updatable = false)
     private LocalDateTime assignedAt = LocalDateTime.now(); // 배정 시각

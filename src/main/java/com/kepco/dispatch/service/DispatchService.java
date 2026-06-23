@@ -35,23 +35,25 @@ public class DispatchService {
 
     /**
      * 1. 파견 관리 대시보드 데이터 및 카운트 전체 조회
+     * - ⚡ [대문자 개혁 완결]: DB 마이그레이션 정합성을 일치시켜 상단 KPI 카운트 완전 정상 가동
      */
     public DispatchDashboardDto getDashboardData() {
         log.info("@# DispatchService - 대시보드 데이터 조회 시작");
         DispatchDashboardDto dto = new DispatchDashboardDto();
 
-        dto.setPendingCount(reportRepository.countByStatus("pending"));
+        // 💡 대문자 PENDING 조건으로 변경하여 KPI 카운트 단선 원천 복구
+        dto.setPendingCount(reportRepository.countByStatus("PENDING"));
 
         long activeCount =
-                dispatchRepository.countByStatus("assigned")
-                + dispatchRepository.countByStatus("dispatched")
-                + dispatchRepository.countByStatus("in_progress"); // 명세서의 출동 중 상태 반영
+                dispatchRepository.countByStatus("ASSIGNED")
+                + dispatchRepository.countByStatus("DISPATCHED")
+                + dispatchRepository.countByStatus("IN_PROGRESS"); 
 
         dto.setActiveCount(activeCount);
 
-        // 🚨 명세서 물리 규칙 반영: completed -> resolved로 카운트 변경
+        // 💡 대문자 RESOLVED 조건 동기화 완료
         dto.setCompletedCount(
-                dispatchRepository.countByStatus("resolved")
+                dispatchRepository.countByStatus("RESOLVED")
         );
 
         dto.setAvailableWorkers(
@@ -94,7 +96,8 @@ public class DispatchService {
      */
     public List<PendingComplaintDto> getPendingComplaints() {
         log.info("@# 미배정 신고 목록 조회");
-        return reportRepository.findByStatus("pending")
+        // 💡 대문자 PENDING 매싱 개통
+        return reportRepository.findByStatus("PENDING")
                 .stream()
                 .map(r -> {
                     PendingComplaintDto dto = new PendingComplaintDto();
@@ -128,6 +131,7 @@ public class DispatchService {
 
     /**
      * 4. 신규 현장 파견 지시
+     * - ⚡ [대문자 전면 개혁]: 새로운 파견 트랜잭션 적재 및 업데이트 시 상태 코드를 무조건 대문자로 빌딩
      */
     @Transactional
     public void createDispatch(DispatchCreateRequestDto requestDto, String dispatcherUsername) {
@@ -140,17 +144,19 @@ public class DispatchService {
         User dispatcher = userRepository.findByUsername(dispatcherUsername)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관제사 계정입니다."));
 
-        reportRepository.updateStatus(report.getId(), "assigned");
+        // 💡 대문자 ASSIGNED 로 보정
+        reportRepository.updateStatus(report.getId(), "ASSIGNED");
         recoveryWorkerRepository.updateWorkStatus(worker.getId(), "UNAVAILABLE");
         
-        log.info("@# 신고 상태 -> assigned");
+        log.info("@# 신고 상태 -> ASSIGNED");
         log.info("@# 작업자 상태 -> UNAVAILABLE");
 
         Dispatch dispatch = new Dispatch();
         dispatch.setComplaint(report);
         dispatch.setRecoveryWorker(worker);
         dispatch.setDispatcher(dispatcher);
-        dispatch.setStatus("assigned");
+        // 💡 엔티티 내부 적재 기본 문자열 대문자 개혁 반영
+        dispatch.setStatus("ASSIGNED");
         dispatch.setAssignedAt(LocalDateTime.now());
         dispatch.setWorkNote(requestDto.getWorkNote());
 
@@ -160,6 +166,7 @@ public class DispatchService {
 
     /**
      * 5. 현장 복구 완료 처리 (명세 규칙 상태 고정 버전)
+     * - ⚡ [대문자 전면 개혁]: 트랜잭션 종료 시 최종 상태값을 대문자로 강제 영구 적재
      */
     @Transactional
     public void completeDispatch(Long dispatchId, String workNote) {
@@ -168,18 +175,18 @@ public class DispatchService {
         Dispatch dispatch = dispatchRepository.findById(dispatchId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 파견 이력입니다."));
         
-        // 🚨 명세서 물리 규칙 반영: completed -> resolved
-        dispatch.setStatus("resolved");
+        // 🚨 명세서 물리 규칙 반영 및 대문자 강제 교정: resolved -> RESOLVED
+        dispatch.setStatus("RESOLVED");
         dispatch.setCompletedAt(LocalDateTime.now());
 
         if (workNote != null && !workNote.trim().isEmpty()) {
             dispatch.setWorkNote(workNote);
         }
 
-        // 🚨 명세서 물리 규칙 반영: 민원 테이블 완료 상태도 resolved로 변경
+        // 🚨 명세서 물리 규칙 반영 및 대문자 강제 교정: 민원 테이블 완료 상태도 RESOLVED로 변경
         if (dispatch.getComplaint() != null) {
-            reportRepository.updateStatus(dispatch.getComplaint().getId(), "resolved");
-            log.info("@# 신고 상태 -> resolved");
+            reportRepository.updateStatus(dispatch.getComplaint().getId(), "RESOLVED");
+            log.info("@# 신고 상태 -> RESOLVED");
         }
         
         if (dispatch.getRecoveryWorker() != null) {
@@ -187,8 +194,11 @@ public class DispatchService {
             log.info("@# 작업자 복귀 처리 -> AVAILABLE");
         }
     }
+
     /**
      * ⚡ [교정 완료] PostgreSQL 부분 인덱스 최적화 및 하이버네이트 프록시 원천 박멸 이력 검색 엔진
+     * - 💡 [대문자 전면 개혁]: totalElements: 0건 누락 버그를 격파하기 위해 
+     *   조회 대상을 소문자 'resolved'가 아닌 공인 규격 대문자 'RESOLVED' 조건으로 강제 조율!
      */
     public Page<DispatchItem> getDispatchHistory(HistorySearchRequestDto dto, Pageable pageable) {
         log.info("@# 과거 이력 고속 복합 검색 엔진 가동");
@@ -202,15 +212,12 @@ public class DispatchService {
                 ? dto.getEndDate().atTime(LocalTime.MAX) 
                 : LocalDateTime.now().with(LocalTime.MAX);
 
-        // 2. 리포지토리 고속 스캔 엔진 호출 (EntityGraph 결합본)
-        Page<Dispatch> entityPage = dispatchRepository.searchHistory(
-                startDateTime,
-                endDateTime,
-                dto.getRegion(),
-                dto.getDistrict(),
-                dto.getAiCategory(),
-                dto.getAiPriority(),
-                dto.getCitizenId(),
+        // 2. 🚀 [근본 해결]: dispatchRepository에 대문자 'RESOLVED' 파라미터를 정확히 실어 데이터베이스 스캔 명령 하달
+        Page<Dispatch> entityPage = dispatchRepository.findAllByStatusAndCompletedAtBetween(
+                "RESOLVED", 
+                startDateTime, 
+                endDateTime, 
+                dto,
                 pageable
         );
 

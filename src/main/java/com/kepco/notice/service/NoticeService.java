@@ -18,9 +18,17 @@ public class NoticeService {
 
     private final NoticeRepository noticeRepository;
 
-    // 전체 공지사항 목록 조회 (상단 고정 우선, 최신순 정렬)
+    // 전체 공지사항 목록 조회 (상단 고정 우선, 최신순 정렬 + 🚨 예약 발행 필터링 적용)
     public List<NoticeResponse> getAllNotices() {
-        List<Notice> notices = noticeRepository.findAllByOrderByIsPinnedDescCreatedAtDesc();
+        // [디버깅용 콘솔 로그] 예약 필터링 쿼리 호출 시작
+        System.out.println("[NoticeService] 발행 처리된 공지사항 목록 조회를 시작합니다."); 
+        
+        // 🚨 무조건 전부 가져오던 메서드 대신, 예약 시간이 검증된 커스텀 쿼리를 호출합니다.
+        List<Notice> notices = noticeRepository.findPublishedNotices();
+        
+        // [디버깅용 콘솔 로그] 필터링 후 반환되는 데이터 개수 확인
+        System.out.println("[NoticeService] 클라이언트로 반환할 공지사항 개수: " + notices.size()); 
+        
         return notices.stream()
                 .map(NoticeResponse::new)
                 .collect(Collectors.toList());
@@ -44,6 +52,7 @@ public class NoticeService {
                 .title(dto.getTitle())
                 .content(dto.getContent())
                 .isPinned(dto.getIsPinned())
+                .publishAt(dto.getPublishAt())
                 .build();
         return noticeRepository.save(notice).getId();
     }
@@ -52,8 +61,7 @@ public class NoticeService {
     public void updateNotice(Long id, NoticeRequest dto) {
         Notice notice = noticeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 공지사항이 없습니다."));
-        // 영속성 컨텍스트(Dirty Checking)로 인해 save() 불필요
-        notice.update(dto.getTitle(), dto.getContent(), dto.getDepartment(), dto.getIsPinned());
+        notice.update(dto.getTitle(), dto.getContent(), dto.getDepartment(), dto.getIsPinned(), dto.getPublishAt());
     }
 
     @Transactional

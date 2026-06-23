@@ -48,15 +48,15 @@ public class Notice {
     
     @Column(name = "publish_at")
     private LocalDateTime publishAt;
-
+    
     @Builder
-    public Notice(Long writerId, String department, String title, String content, Boolean isPinned) {
+    public Notice(Long writerId, String title, String content, String department, Boolean isPinned, java.time.LocalDateTime publishAt) {
         this.writerId = writerId;
-        this.department = department;
         this.title = title;
         this.content = content;
+        this.department = department;
         this.isPinned = isPinned != null ? isPinned : false;
-        this.views = 0;
+        this.publishAt = publishAt;
     }
 
     // 조회수 증가 메서드
@@ -65,10 +65,11 @@ public class Notice {
     }
     
     // 게시글 수정 메서드
-    public void update(String title, String content, String department, Boolean isPinned) {
+    public void update(String title, String content, String department, Boolean isPinned, java.time.LocalDateTime publishAt) {
         this.title = title;
         this.content = content;
         this.department = department;
         this.isPinned = isPinned != null ? isPinned : false;
+        this.publishAt = publishAt;
     }
 }

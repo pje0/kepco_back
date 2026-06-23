@@ -7,7 +7,7 @@ import com.kepco.dispatch.dto.*;
 import com.kepco.dispatch.entity.Dispatch;
 import com.kepco.dispatch.repository.DispatchRepository;
 import com.kepco.dispatch.repository.RecoveryWorkerRepository;
-import com.kepco.dispatch.repository.ReportRepository;
+import com.kepco.report.repository.ReportRepository;
 import com.kepco.report.entity.Report;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -45,6 +45,9 @@ public class Notice {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    @Column(name = "publish_at")
+    private LocalDateTime publishAt;
 
     @Builder
     public Notice(Long writerId, String department, String title, String content, Boolean isPinned) {

@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -84,6 +85,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/system/**", "/admin/system/**").hasRole("ADMIN")
                         
                         // 자료실: 목록·다운로드 (전 직원 공용) - 박정은 추가
+                        .requestMatchers(HttpMethod.POST, "/api/archive").hasRole("ADMIN")
                         .requestMatchers("/api/archive", "/api/archive/**").permitAll()
                         
                         .anyRequest().authenticated()

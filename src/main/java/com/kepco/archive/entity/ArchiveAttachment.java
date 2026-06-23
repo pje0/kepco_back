@@ -3,6 +3,8 @@ package com.kepco.archive.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -10,6 +12,8 @@ import lombok.NoArgsConstructor;
 @Table(name = "archive_attachment")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class ArchiveAttachment {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

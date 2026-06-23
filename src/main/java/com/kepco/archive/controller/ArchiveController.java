@@ -19,6 +19,12 @@ import com.kepco.archive.service.ArchiveService;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
+
 @RestController
 @RequiredArgsConstructor
 public class ArchiveController {
@@ -52,5 +58,23 @@ public class ArchiveController {
         headers.add("Content-Disposition", "attachment; filename=" + encoded);
 
         return new ResponseEntity<>(resource, headers, HttpStatus.OK);
+    }
+    
+    @PostMapping("/api/archive")
+    public ResponseEntity<?> uploadArchive(
+            @RequestParam("title") String title,
+            @RequestParam("category") String category,
+            @RequestParam(value = "content", required = false) String content,
+            @RequestPart("file") MultipartFile file,
+            @AuthenticationPrincipal User principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
+        }
+        try {
+            archiveService.uploadArchive(principal.getUsername(), title, category, content, file);
+            return ResponseEntity.ok(Map.of("message", "자료가 등록되었습니다."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "자료 등록 실패: " + e.getMessage()));
+        }
     }
 }

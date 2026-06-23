@@ -65,4 +65,25 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
                    "GROUP BY TO_CHAR(created_at, 'YYYY-MM') " +
                    "ORDER BY name ASC", nativeQuery = true)
     List<StatCount> countReportsByMonth();
+
+    // =========================================================================
+    // 🧠 [인공지능 코어] 실시간 민원 분류 자동 적재 전용 영역
+    // =========================================================================
+    
+    /**
+     * 🚨 [JPA 무결성 수복 벌크 메서드]: 엔티티 소스 코드 수정 없이 
+     * DB complaint 테이블의 ai_category, ai_priority 컬럼을 초고속 실시간 적재합니다.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("""
+        UPDATE Report r 
+        SET r.aiCategory = :aiCategory, r.aiPriority = :aiPriority 
+        WHERE r.id = :reportId
+    """)
+    void updateAiClassification(
+            @Param("reportId") Long reportId, 
+            @Param("aiCategory") String aiCategory, 
+            @Param("aiPriority") String aiPriority
+    );
 }

@@ -1,6 +1,7 @@
 package com.kepco.dispatch.entity;
 
 import com.kepco.auth.entity.User;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.kepco.auth.entity.RecoveryWorker;
 import com.kepco.report.entity.Report; // 💡 우리가 찾은 Report 패키지 경로 매핑!
 
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 @Table(name = "dispatch")
 @Data
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Dispatch {
 
     @Id

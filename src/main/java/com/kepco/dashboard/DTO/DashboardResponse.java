@@ -22,4 +22,5 @@ public class DashboardResponse {
     // 3. 차트용 데이터 (프론트엔드의 Object.entries() 처리를 위해 Map 형태 반환)
     private Map<String, Long> reportsByDistrict;
     private Map<String, Long> reportsByCategory;
+    private Map<String, Long> monthlyReports;
 }

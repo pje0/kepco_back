@@ -60,4 +60,12 @@ public class Notice {
     public void incrementViews() {
         this.views++;
     }
+    
+    // 게시글 수정 메서드
+    public void update(String title, String content, String department, Boolean isPinned) {
+        this.title = title;
+        this.content = content;
+        this.department = department;
+        this.isPinned = isPinned != null ? isPinned : false;
+    }
 }

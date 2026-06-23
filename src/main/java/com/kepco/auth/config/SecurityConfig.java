@@ -83,6 +83,9 @@ public class SecurityConfig {
                         // 7. 최고 관리자 전용 서버 마스터 시스템 통제 경로
                         .requestMatchers("/api/admin/system/**", "/admin/system/**").hasRole("ADMIN")
                         
+                        // 자료실: 목록·다운로드 (전 직원 공용) - 박정은 추가
+                        .requestMatchers("/api/archive", "/api/archive/**").permitAll()
+                        
                         .anyRequest().authenticated()
                 )
                 .addFilterAt(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

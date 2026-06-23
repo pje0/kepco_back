@@ -36,8 +36,8 @@ public class ArchiveController {
     }
 
     @GetMapping("/api/archive/{id}/download")
-    public ResponseEntity<Resource> download(@PathVariable Long id) throws Exception {
-        Archive archive = archiveRepository.findById(id)          // 클래스 → 주입받은 객체
+    public ResponseEntity<Resource> download(@PathVariable("id") Long id) throws Exception {
+        Archive archive = archiveRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("자료 없음"));
         ArchiveAttachment att = archive.getAttachments().stream().findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("첨부파일 없음"));
@@ -45,9 +45,12 @@ public class ArchiveController {
         Resource resource = new FileSystemResource(att.getFileUrl());
         if (!resource.exists()) throw new IllegalArgumentException("파일이 존재하지 않습니다");
 
+        archiveRepository.increaseDownloadCount(id);   // 추가: 다운로드 수 +1
+
         String encoded = new String(att.getFileName().getBytes("UTF-8"), "ISO-8859-1");
         HttpHeaders headers = new HttpHeaders();
         headers.add("Content-Disposition", "attachment; filename=" + encoded);
+
         return new ResponseEntity<>(resource, headers, HttpStatus.OK);
     }
 }

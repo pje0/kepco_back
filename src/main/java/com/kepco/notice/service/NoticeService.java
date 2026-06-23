@@ -53,6 +53,7 @@ public class NoticeService {
                 .content(dto.getContent())
                 .isPinned(dto.getIsPinned())
                 .publishAt(dto.getPublishAt())
+                .status(dto.getStatus()) // 🚨 추가
                 .build();
         return noticeRepository.save(notice).getId();
     }
@@ -61,11 +62,18 @@ public class NoticeService {
     public void updateNotice(Long id, NoticeRequest dto) {
         Notice notice = noticeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 공지사항이 없습니다."));
-        notice.update(dto.getTitle(), dto.getContent(), dto.getDepartment(), dto.getIsPinned(), dto.getPublishAt());
+        notice.update(dto.getTitle(), dto.getContent(), dto.getDepartment(), dto.getIsPinned(), dto.getPublishAt(), dto.getStatus());
     }
 
     @Transactional
     public void deleteNotice(Long id) {
         noticeRepository.deleteById(id);
+    }
+    
+    // 임시저장 목록 조회
+    public List<NoticeResponse> getDraftNotices() {
+        return noticeRepository.findDraftNotices().stream()
+                .map(NoticeResponse::new)
+                .collect(Collectors.toList());
     }
 }

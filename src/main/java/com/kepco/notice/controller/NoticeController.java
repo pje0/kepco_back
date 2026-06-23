@@ -50,4 +50,10 @@ public class NoticeController {
         noticeService.deleteNotice(id);
         return ResponseEntity.ok().build();
     }
+    
+    // 임시저장 목록 조회 API
+    @GetMapping("/drafts")
+    public ResponseEntity<List<NoticeResponse>> getDraftNotices() {
+        return ResponseEntity.ok(noticeService.getDraftNotices());
+    }
 }

@@ -1,7 +1,8 @@
-// src/main/java/com/kepco/notice/entity/NoticeTemplate.java (v1.0)
+// src/main/java/com/kepco/notice/entity/NoticeTemplate.java (v1.1)
 package com.kepco.notice.entity;
 
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
@@ -29,4 +30,13 @@ public class NoticeTemplate {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Builder
+    public NoticeTemplate(String title, String content, String department) {
+        this.title = title;
+        this.content = content;
+        this.department = department;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
 }

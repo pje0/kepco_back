@@ -140,18 +140,25 @@ public class AuthController {
     }
 
     /**
-     * 2-5. [하이브리드 페이징 전환] 임직원 명부 전체 조회 API
+     * 2-5. [하이브리드 페이징 + 강력한 보안 격리] 임직원 명부 전체 조회 API
      * - URL 규격: GET /api/hr/users
-     * - 규칙: SecurityConfig의 /api/hr/** 정책에 연동되어 자동으로 HR, ADMIN만 접근 허용
-     * - 리액트 레이어가 전체 데이터를 들고 화면단 페이징을 수행하도록 JSON 배열(List)을 반환합니다.
+     * - 보안 철칙: 일반 민원인(ROLE_CITIZEN) 데이터는 어떠한 경우에도 원천 차단합니다.
      */
     @GetMapping("/api/hr/users")
     public ResponseEntity<?> getAllEmployeesList() {
         try {
-            // 1. 서비스 비즈니스 엔진 호출하여 100% 무결성 DTO 리스트 수신
-            List<AdminUserResponseDto> employees = authService.getAllEmployees();
+            List<AdminUserResponseDto> employees = userRepository.findAll().stream()
+                    .filter(user -> {
+                        // 🚨 [강력한 보안 검증]: 권한이 비어있거나, 대소문자 무관하게 'CITIZEN' 단어가 포함되면 즉시 제외
+                        if (user.getRole() == null) return false;
+                        
+                        String upperRole = user.getRole().toUpperCase().trim();
+                        return !upperRole.contains("CITIZEN") && !upperRole.equals("ROLE_CITIZEN");
+                    })
+                    // 💡 검증을 통과한 순수 임직원(ADMIN, HR, DISPATCHER, WORKER)만 DTO 생성자 바인딩
+                    .map(user -> new AdminUserResponseDto(user)) 
+                    .collect(java.util.stream.Collectors.toList());
             
-            // 2. 리액트 레이어가 즉각 렌더링하도록 200 OK와 함께 JSON 배열 송출
             return ResponseEntity.ok(employees);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", "임직원 명부를 불러오는 중 오류가 발생했습니다. " + e.getMessage()));

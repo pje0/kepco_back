@@ -75,7 +75,10 @@ public class SecurityConfig {
                         // 4. [인사팀 전용 사원 관리 경로]
                         .requestMatchers("/api/hr/**", "/hr/**").hasAnyRole("HR", "ADMIN")
                         
-                        // 5. ⭕ [파견관리팀 전용 관제 경로] 스키마 공식 명칭 DISPATCHER 교정 완료
+                        //⚡ [교정] 신규 하위 경로 패턴을 명시적으로 독립 선언하여 와일드카드 오매칭 우회
+                        .requestMatchers("/api/dispatch/history").hasAnyRole("DISPATCHER", "ADMIN")
+
+                        // 5. (기존 소스 보존) [파견관리팀 전용 관제 경로]
                         .requestMatchers("/api/dispatch/**", "/dispatch/**").hasAnyRole("DISPATCHER", "ADMIN")
                         
                         // 6. [현장근무자 전용 복구 경로] 순수 WORKER만 단독 접근 허용

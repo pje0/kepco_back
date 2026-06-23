@@ -32,10 +32,6 @@ public class AuthController {
     private final AuthService authService;
     private final UserRepository userRepository; 
 
-    /* =========================================================================
-     *  1. 대민 민원인 전용 기능 (ROLE_CITIZEN 전용 대문)
-     * ========================================================================= */
-
     /**
      * 1-1. 민원인 회원가입 API
      * - URL: POST /api/auth/register
@@ -144,35 +140,40 @@ public class AuthController {
     }
 
     /**
-     * 2-5. [신규 추가] 임직원 명부 전체 조회 API
-     * - URL 규격: GET /api/hr/users
-     * - 규칙: SecurityConfig의 /api/hr/** 정책에 연동되어 자동으로 HR, ADMIN만 접근 허용
+     * 🔄 [레거시/호환용 분리]: 2-5. 임직원 명부 전체 조회 API (전체 배열 반환)
+     * - URL 규격: GET /api/hr/users/all
+     * - 규칙: 기존 무결성 DTO 전체 리스트 수신용 엔드포인트를 안전하게 주소만 이동하여 격리 보존합니다.
      */
-    @GetMapping("/api/hr/users")
+    @GetMapping("/api/hr/users/all")
     public ResponseEntity<?> getAllEmployeesList() {
         try {
-            // 1. 서비스 비즈니스 엔진 호출하여 100% 무결성 DTO 리스트 수신
             List<AdminUserResponseDto> employees = authService.getAllEmployees();
-            
-            // 2. 리액트 레이어가 즉각 렌더링하도록 200 OK와 함께 JSON 배열 송출
             return ResponseEntity.ok(employees);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", "임직원 명부를 불러오는 중 오류가 발생했습니다. " + e.getMessage()));
         }
     }
 
-    /* =========================================================================
-     *  3. 로그인 회원 공통 인증 기능 (내 정보 조회)
-     * ========================================================================= */
-
-    /* =========================================================================
-     *  3. 로그인 회원 공통 인증 기능 (내 정보 조회)
-     * ========================================================================= */
+    /**
+     * 🎯 [신규 탑재 - 고도화]: 2-6. 임직원 명부 서버사이드 오프셋 페이징 및 키워드 동적 검색 API
+     * - URL 규격 주소체계: GET /api/hr/users?page=0&size=10&search=홍길동
+     * - 리액트의 기본 주소 통신을 가로채어 300~500명 분량의 데이터를 SQL LIMIT 연산으로 물리 분할 서빙합니다.
+     */
+    @GetMapping("/api/hr/users")
+    public ResponseEntity<?> getEmployeesPageable(
+            @org.springframework.data.web.PageableDefault(page = 0, size = 10, sort = "id", direction = org.springframework.data.domain.Sort.Direction.DESC) org.springframework.data.domain.Pageable pageable,
+            @org.springframework.web.bind.annotation.RequestParam(value = "search", required = false) String search) {
+        try {
+            org.springframework.data.domain.Page<AdminUserResponseDto> pageResult = authService.getEmployeesPageable(search, pageable);
+            return ResponseEntity.ok(pageResult);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "페이징 처리된 임직원 명부를 불러오는 중 오류가 발생했습니다. " + e.getMessage()));
+        }
+    }
 
     /**
      * 3-1. 현재 로그인한 사용자의 최신 상세 정보 조회 API
      * - URL: GET /api/auth/me
-     * - 프론트엔드에서 새로고침 하거나 로그인 직후 세션 유지를 위해 토큰을 검증하고 데이터를 가져오는 핵심 창구입니다.
      */
     @GetMapping("/api/auth/me")
     public ResponseEntity<?> getCurrentUserInfo(@AuthenticationPrincipal User principal) {
@@ -183,14 +184,12 @@ public class AuthController {
         try {
             String username = principal.getUsername();
             
-            // 🎯 DB에서 실제 계정 실시간 조회
             com.kepco.auth.entity.User dbUser = userRepository.findByUsername(username)
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 계정입니다."));
 
             String rawRole = dbUser.getRole() != null ? dbUser.getRole() : "ROLE_CITIZEN";
-            String finalRole = rawRole.toUpperCase(); // 무조건 ROLE_WORKER, ROLE_ADMIN 형태로 고정
+            String finalRole = rawRole.toUpperCase();
 
-            // 💡 [교정]: Map.of는 null 포함 시 500 NPE 에러를 발생시키므로, null-safe한 HashMap으로 전면 교체
             java.util.Map<String, Object> userData = new java.util.HashMap<>();
             userData.put("username", username);
             userData.put("role", finalRole);
@@ -206,4 +205,3 @@ public class AuthController {
         }
     }
 }
-

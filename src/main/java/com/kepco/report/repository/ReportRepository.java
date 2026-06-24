@@ -23,6 +23,10 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     // 🔍 미배정 대기 신고 리스트 (파견팀 조회용)
     List<Report> findByStatus(String status);
 
+    // ⚡ [연동 개혁 신설]: 관제소 실시간 필터링을 위한 대문자 명세 대응 네이밍 쿼리 3대장 매립
+    List<Report> findAllByStatusAndCitizenIdOrderByCreatedAtDesc(String status, Long citizenId);
+    List<Report> findAllByStatusOrderByCreatedAtDesc(String status);
+
     // 🚨 신고 상태 변경 (파견팀 배정 및 처리 상태 업데이트용)
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional

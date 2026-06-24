@@ -53,6 +53,34 @@ public class ReportService {
         return savedId;
     }
 
+    /**
+     * ⚡ [연동 개혁 신설]: 파견 관제팀 전용 전체 민원 목록 실시간 동적 쿼리 조회
+     * - 프론트엔드가 대문자로 포맷팅한 status 파라미터가 비즈니스 쿼리축에 완벽히 명중되도록 가동
+     */
+    public List<ReportResponse> getAllReports(String status, Long citizenId) {
+        log.info("⚙️ 관제 시스템 동적 조회 구동 - 파라미터 상태: [{}], 시민ID: [{}]", status, citizenId);
+        
+        // 데이터 전처리 안전장치 가동
+        String targetStatus = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
+
+        // 💡 복잡한 Dynamic Query 인프라 구축 전, 관제소 로딩 속도 최적화를 위한 조건별 분기 필터링 처리
+        List<Report> reports;
+        if (targetStatus != null && citizenId != null) {
+            reports = reportRepository.findAllByStatusAndCitizenIdOrderByCreatedAtDesc(targetStatus, citizenId);
+        } else if (targetStatus != null) {
+            reports = reportRepository.findAllByStatusOrderByCreatedAtDesc(targetStatus);
+        } else if (citizenId != null) {
+            reports = reportRepository.findAllByCitizenIdOrderByCreatedAtDesc(citizenId);
+        } else {
+            reports = reportRepository.findAll();
+        }
+
+        // 하이버네이트 프록시 레이어를 완전 휘발시키고 순수 데이터 응답 객체(ReportResponse)로 패키징 매핑
+        return reports.stream()
+                .map(ReportResponse::new)
+                .collect(Collectors.toList());
+    }
+
     // 내 민원 목록 조회 (Read)
     public List<ReportResponse> getMyReports(Long citizenId) {
         log.info("⚙️ DB에서 시민 ID [{}]의 민원 목록을 최신순으로 조회합니다.", citizenId);

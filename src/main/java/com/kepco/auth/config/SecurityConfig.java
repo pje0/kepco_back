@@ -1,11 +1,7 @@
 package com.kepco.auth.config;
 
-import com.kepco.auth.filter.JwtAuthenticationFilter;
-import com.kepco.auth.filter.JwtRequestFilter;
-import com.kepco.auth.provider.JwtTokenProvider;
-import com.kepco.auth.service.CustomUserDetailsService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +21,13 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
+import com.kepco.auth.filter.JwtAuthenticationFilter;
+import com.kepco.auth.filter.JwtRequestFilter;
+import com.kepco.auth.provider.JwtTokenProvider;
+import com.kepco.auth.service.CustomUserDetailsService;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Configuration
 @EnableWebSecurity
@@ -55,9 +57,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .userDetailsService(customUserDetailsService)
                 
-             // 🔐 최종 DB 스키마 규격 반영 및 이원화 인가 제어 (프론트엔드 /api/ 주소 완벽 튜닝)
                 .authorizeHttpRequests(auth -> auth
-                        // 1. 로그인, 로그아웃 및 민원인 가입 창구 전면 허용 (개나소나 프리패스 구역)
+                        // 1. 공개 허용 경로 설정
                         .requestMatchers(
                             "/", "/login", "/register", 
                             "/api/auth/login", "/api/auth/logout", "/api/auth/register", "/api/register",
@@ -66,27 +67,27 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                         
-                        // 2. 민원인 본인 정보 수정/탈퇴 전용 마이페이지
-//                        .requestMatchers("/api/user/me", "/user/me").hasRole("CITIZEN")
-                        // 본인 정보 수정 기능은 전 직원 공용임 - 박정은
+                        // 2. 공용 마이페이지
                         .requestMatchers("/api/user/me", "/user/me").authenticated()
                         
-                        // 3. 민원인 전용 비즈니스 처리 영역
+                        // 3. 민원인 비즈니스 영역
                         .requestMatchers("/api/citizen/**", "/citizen/**").hasAnyRole("CITIZEN", "ADMIN")
                         
-                        // 4. [인사팀 전용 사원 관리 경로]
+                        // ⚡ [근본 해결 - 민원 주소 인가 독립 매핑 신설]
+                        // - 403 Forbidden 원천 분쇄를 위해 관제사 및 마스터 관리자 등급 전용으로 개통
+                        .requestMatchers("/api/complaint", "/api/complaint/**").hasAnyRole("DISPATCHER", "ADMIN")
+                        
+                        // 4. 인사팀 전용 관리 영역
                         .requestMatchers("/api/hr/**", "/hr/**").hasAnyRole("HR", "ADMIN")
                         
-                        //⚡ [교정] 신규 하위 경로 패턴을 명시적으로 독립 선언하여 와일드카드 오매칭 우회
+                        // 5. 파견관리팀 전용 관제 영역
                         .requestMatchers("/api/dispatch/history").hasAnyRole("DISPATCHER", "ADMIN")
-
-                        // 5. (기존 소스 보존) [파견관리팀 전용 관제 경로]
                         .requestMatchers("/api/dispatch/**", "/dispatch/**").hasAnyRole("DISPATCHER", "ADMIN")
                         
-                        // 6. [현장근무자 전용 복구 경로] 순수 WORKER만 단독 접근 허용
+                        // 6. 현장근무자 영역
                         .requestMatchers("/api/worker/**", "/worker/**").hasRole("WORKER")
                         
-                        // 7. 최고 관리자 전용 서버 마스터 시스템 통제 경로
+                        // 7. 최고 관리자 영역
                         .requestMatchers("/api/admin/system/**", "/admin/system/**").hasRole("ADMIN")
                         
                         // 자료실: 목록·다운로드 (전 직원 공용) - 박정은 추가
@@ -100,19 +101,33 @@ public class SecurityConfig {
 
         return http.build();
     }
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * CORS(Cross-Origin Resource Sharing) 인프라 매핑 설정
+     * 💡 [로그 주입]: 브라우저 OPTIONS preflight 패킷 연산 및 403 차단 추적을 위한 디버깅용 커스텀 소스 가동
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
+        
+        // 프론트엔드 Vite 개발 서버 포트(5173) 및 외부 통신 축 명시적 전면 수용
+        config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);
+        
+        // 🚨 [ROLE_ROLE_ 중복 검증 콘솔 로그 주입]: Spring Security 인가 가드 가동 상태 실시간 출력
+        log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        log.info("🛰️ [KEPCO MIS Security 인프라 디버깅]: CORS 필터 및 OPTIONS 가드 가동 시작");
+        log.info("🚨 [ROLE_ROLE_ 검증 가이드]: 만약 로그인 시 토큰의 Authority 가 'ROLE_ROLE_ADMIN' 등으로");
+        log.info("   중복 결합되어 매싱 중이라면, JwtRequestFilter 단에서 접두사 정제가 누락된 상태입니다.");
+        log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;

@@ -89,22 +89,33 @@ public class AiMatchService {
             String workersJsonString =
                     objectMapper.writeValueAsString(workersData);
 
-            String systemPrompt =
-                    "당신은 한국전력공사(KEPCO)의 관제 AI입니다. "
-                    + "재난 상황에 가장 적합한 복구 요원을 추천하세요. "
-                    + "반드시 JSON만 응답해야 합니다. "
-                    + "{\"recommendations\":[{\"workerId\":1,"
-                    + "\"name\":\"홍길동\",\"empNumber\":\"EMP001\","
-                    + "\"department\":\"송전부\",\"score\":95,"
-                    + "\"reason\":\"배전 복구 경험 다수\"}]}";
+            String systemPrompt = 
+                    "당신은 한국전력공사(KEPCO) 배전운영본부의 최고 관제 사령 AI 엔진입니다. "
+                    + "주어진 현장 재난 상황을 기술적/물리적으로 정밀 정량 연산하여 가장 적합한 복구 조를 추천해야 합니다.\n\n"
+                    
+                    + "=== 🎯 [핵심 배점 및 연산 알고리즘 규칙] ===\n"
+                    + "1. 기술 숙련도 직급 (30점): 'MASTER' 등급은 현장 총괄 및 조장 후보로 최우선 가점, 'SENIOR'는 부팀장 가점, 'JUNIOR'는 실무 조원으로 배점.\n"
+                    + "2. 재난 현장 장비 매칭 가중치 (40점):\n"
+                    + "   - 전신주 파손, 크레인, 공중선 고장, 변압기 고장 건: '고소작업대운전기능사'(바스켓차 조작 스펙) 및 '기중기운전기능사'(크레인차 운전 스펙) 자격 보유자에게 압도적인 가중치 부여.\n"
+                    + "   - 누전, 지중선 고장, 땅속 케이블 단선, 맨홀 고장 건: '지중배전전공' 및 '굴착기운전기능사'(포크레인 땅파기 스펙) 자격 보유자에게 압도적인 가중치 부여.\n"
+                    + "3. 핵심 기술 자격 (30점): '배전활선전공' 및 '배전무정전전공' 소지자에게 기본 기술 점수 대량 배점.\n\n"
+                    
+                    + "=== 📋 [추천 사유(Reason) 출력 포맷 규칙] ===\n"
+                    + "- '경험 다수', '성실함' 같은 추상적이거나 무성의한 문구는 전면 금지하며, 발견 시 오작동 결함으로 판정합니다.\n"
+                    + "- 반드시 [보유 특수 자격 확인] -> [현장 장비 구동 및 기술 매칭 적합성 근거] -> [조 내 역할 분담(조장/조원)] 구조가 정량적이고 공기업 행정 표준에 알맞게 논리적인 한 문장으로 압축 출력되어야 합니다.\n"
+                    + "  (예: '전기기능장 및 고소작업대운전기능사를 소지한 10년 경력의 MASTER 등급으로, 현장 바스켓 차량 구동 및 고압 활선 작업을 총괄 지휘할 조장 후보로 적합하여 추천함.')\n\n"
+                    
+                    + "=== 🛰️ [출력 데이터 포맷 스키마] ===\n"
+                    + "반드시 마크다운 주석(```)을 배제하고 순수 JSON Object로만 응답해야 하며, 루트 키 이름은 정확히 'recommendations' 배열이어야 합니다.\n"
+                    + "{\"recommendations\":[{\"workerId\":1,\"name\":\"사원명\",\"empNumber\":\"사번\",\"department\":\"소속부서\",\"score\":100,\"reason\":\"추천 사유 문장\"}]}";
 
             String userPrompt = String.format("""
-                    ### 재난 상황
+                    ### 재난 상황 명세
                     - 재난 종류: %s
                     - 발생 위치: %s
                     - 필요 기술: %s
 
-                    ### 가용 작업자 명단
+                    ### 현재 출동 가능한 가용 작업자 데이터 명부
                     %s
                     """,
                     disasterType, location, requiredSkill, workersJsonString);
@@ -115,7 +126,7 @@ public class AiMatchService {
                             Map.of("role", "system", "content", systemPrompt),
                             Map.of("role", "user", "content", userPrompt)
                     ),
-                    "temperature", 0.3,
+                    "temperature", 0.1, // 💡 연산의 정확도와 일관성을 극대화하기 위해 온도를 0.1로 타이트하게 고정
                     "response_format", Map.of("type", "json_object")
             );
 

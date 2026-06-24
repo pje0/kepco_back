@@ -1,3 +1,4 @@
+// src/main/java/com/kepco/notice/entity/Notice.java
 package com.kepco.notice.entity;
 
 import jakarta.persistence.*;
@@ -49,27 +50,34 @@ public class Notice {
     @Column(name = "publish_at")
     private LocalDateTime publishAt;
     
+    // 🚨 [수정] DB의 대문자 규격에 맞춰 기본값을 'PUBLISHED'로 세팅
+    @Column(name = "status", length = 20)
+    private String status = "PUBLISHED";
+    
     @Builder
-    public Notice(Long writerId, String title, String content, String department, Boolean isPinned, java.time.LocalDateTime publishAt) {
+    public Notice(Long writerId, String title, String content, String department, Boolean isPinned, LocalDateTime publishAt, String status) {
         this.writerId = writerId;
         this.title = title;
         this.content = content;
         this.department = department;
         this.isPinned = isPinned != null ? isPinned : false;
         this.publishAt = publishAt;
+        // 🚨 프론트에서 소문자가 넘어오더라도 강제로 대문자로 변환하여 저장
+        this.status = status != null ? status.toUpperCase() : "PUBLISHED";
+        this.views = 0;
     }
 
-    // 조회수 증가 메서드
     public void incrementViews() {
         this.views++;
     }
     
-    // 게시글 수정 메서드
-    public void update(String title, String content, String department, Boolean isPinned, java.time.LocalDateTime publishAt) {
+    public void update(String title, String content, String department, Boolean isPinned, LocalDateTime publishAt, String status) {
         this.title = title;
         this.content = content;
         this.department = department;
         this.isPinned = isPinned != null ? isPinned : false;
         this.publishAt = publishAt;
+        // 🚨 강제 대문자 변환
+        this.status = status != null ? status.toUpperCase() : "PUBLISHED";
     }
 }

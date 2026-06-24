@@ -48,6 +48,10 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     // 🚨 [대시보드용] 상태별 건수 조회 (상단 KPI 카운트용)
     long countByStatus(String status);
 
+    // 🚨 [대시보드용] 최근 7일 이내 처리 완료 건수 조회
+    @Query(value = "SELECT COUNT(*) FROM complaint WHERE status = 'RESOLVED' AND created_at >= NOW() - INTERVAL '7 days'", nativeQuery = true)
+    long countResolvedLast7Days();
+
     // 🚨 [대시보드용] 통계 투영(Projection) 인터페이스
     interface StatCount {
         String getName();

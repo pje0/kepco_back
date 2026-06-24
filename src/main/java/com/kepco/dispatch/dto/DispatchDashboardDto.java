@@ -23,5 +23,6 @@ public class DispatchDashboardDto {
         private LocalDateTime assignedAt;    // UI: '파견 시각'
         private String workNote;            // UI: '지시 사항'
         private String status;              // UI: '상태' (assigned, completed 등)
+        private LocalDateTime completedAt; 
     }
 }

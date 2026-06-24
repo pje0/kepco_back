@@ -82,6 +82,10 @@ public class DispatchService {
                             item.setAssignedAt(dispatch.getAssignedAt());
                             item.setWorkNote(dispatch.getWorkNote() != null ? dispatch.getWorkNote() : "");
                             item.setStatus(dispatch.getStatus());
+
+                            // 👍 [최종 조치]: 백엔드 내부 연동 파이프라인 단선 복구 완료!
+                            item.setCompletedAt(dispatch.getCompletedAt()); 
+
                             return item;
                         })
                         .collect(Collectors.toList());

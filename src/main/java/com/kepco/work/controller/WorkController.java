@@ -27,7 +27,7 @@ public class WorkController {
         List<WorkDispatchDto> list = workService.getMyDispatches(principal.getUsername());
         return ResponseEntity.ok(list);
     }
-    
+     
     @PatchMapping("/dispatches/{id}/status")
     public ResponseEntity<?> updateStatus(
             @PathVariable("id") Long id,

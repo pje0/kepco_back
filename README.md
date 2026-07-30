@@ -1,7 +1,7 @@
 
 <div align="center">
 
-# ⚡ 한전(KEPCO) 정전·장애 대응 MIS — Backend
+# 한전(KEPCO) 정전·장애 대응 MIS — Backend
 
 시민 정전·장애 신고 접수, AI 기반 작업자 추천, 출동 처리를 지원하는 정전·장애 대응 관리 시스템
 
